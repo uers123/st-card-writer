@@ -24,6 +24,8 @@ Open:
 http://localhost:8787
 ```
 
+If 8787 is busy, `Start.bat` automatically uses the next free port from 8787 to 8799 and opens that URL.
+
 ## UI Functions
 
 - API configuration: set OpenAI-compatible `base_url`, `api_key`, `model`, `temperature`, and `max_tokens`; use `测试连接` for `/models` or lightweight chat feedback.
