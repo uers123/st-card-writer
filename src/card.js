@@ -58,6 +58,10 @@ export function normalizeCard(input = {}, regexScripts = undefined) {
     extensions: normalizeExtensions(sourceData.extensions, regexScripts),
   };
 
+  if (sourceData.character_book && typeof sourceData.character_book === 'object' && !Array.isArray(sourceData.character_book)) {
+    data.character_book = structuredClone(sourceData.character_book);
+  }
+
   return {
     spec: 'chara_card_v2',
     spec_version: '2.0',

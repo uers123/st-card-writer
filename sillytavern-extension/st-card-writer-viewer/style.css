@@ -1,0 +1,255 @@
+#stcwv-menu-button.stcwv-button-active {
+  color: #24b47e;
+}
+
+.stcwv-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  background: rgba(0, 0, 0, 0.48);
+  display: grid;
+  justify-items: end;
+}
+
+.stcwv-hidden {
+  display: none;
+}
+
+.stcwv-shell {
+  width: min(980px, calc(100vw - 24px));
+  height: calc(100vh - 24px);
+  margin: 12px;
+  border: 1px solid var(--SmartThemeBorderColor, #444);
+  border-radius: 8px;
+  background: var(--SmartThemeBlurTintColor, #181818);
+  color: var(--SmartThemeBodyColor, #f2f2f2);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.stcwv-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+  padding: 14px;
+  border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+}
+
+.stcwv-header h2,
+.stcwv-header p,
+.stcwv-hero h3,
+.stcwv-hero p,
+.stcwv-recent h4,
+.stcwv-card h4,
+.stcwv-card p {
+  margin: 0;
+}
+
+.stcwv-header p,
+.stcwv-hero p,
+.stcwv-card p,
+.stcwv-recent p,
+.stcwv-card small {
+  color: var(--SmartThemeEmColor, #b8b8b8);
+}
+
+.stcwv-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid var(--SmartThemeBorderColor, #444);
+  background: transparent;
+  color: inherit;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.stcwv-body {
+  overflow: auto;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.stcwv-empty,
+.stcwv-hero,
+.stcwv-toolbar,
+.stcwv-recent,
+.stcwv-table-wrap,
+.stcwv-card {
+  border: 1px solid var(--SmartThemeBorderColor, #444);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.stcwv-empty {
+  padding: 16px;
+}
+
+.stcwv-hero {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+}
+
+.stcwv-cover,
+.stcwv-thumb {
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #24b47e;
+  color: #03120c;
+  font-weight: 900;
+  overflow: hidden;
+}
+
+.stcwv-cover {
+  width: 96px;
+  aspect-ratio: 1;
+}
+
+.stcwv-cover img,
+.stcwv-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stcwv-stats,
+.stcwv-groups,
+.stcwv-key-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.stcwv-stats span,
+.stcwv-key {
+  border: 1px solid var(--SmartThemeBorderColor, #444);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.stcwv-toolbar {
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.stcwv-toolbar input {
+  width: 100%;
+  border: 1px solid var(--SmartThemeBorderColor, #444);
+  border-radius: 6px;
+  background: var(--SmartThemeBlurTintColor, #181818);
+  color: inherit;
+  padding: 8px;
+}
+
+.stcwv-groups button {
+  border: 1px solid var(--SmartThemeBorderColor, #444);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  padding: 5px 10px;
+}
+
+.stcwv-groups button.active {
+  background: #24b47e;
+  color: #03120c;
+}
+
+.stcwv-recent {
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.stcwv-recent-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--SmartThemeBorderColor, #444);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.stcwv-table-wrap {
+  overflow: auto;
+}
+
+.stcwv-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.stcwv-table th,
+.stcwv-table td {
+  border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.stcwv-table tr.recent td {
+  background: rgba(36, 180, 126, 0.16);
+}
+
+.stcwv-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.stcwv-card {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+  border-left: 5px solid var(--entry-color, #24b47e);
+}
+
+.stcwv-card.recent {
+  outline: 2px solid #24b47e;
+}
+
+.stcwv-card.disabled {
+  opacity: 0.55;
+}
+
+.stcwv-thumb {
+  width: 64px;
+  aspect-ratio: 1;
+  background: var(--entry-color, #24b47e);
+}
+
+.stcwv-card-body {
+  min-width: 0;
+}
+
+.stcwv-card p {
+  margin-top: 4px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 720px) {
+  .stcwv-shell {
+    width: calc(100vw - 12px);
+    height: calc(100vh - 12px);
+    margin: 6px;
+  }
+
+  .stcwv-hero,
+  .stcwv-card {
+    grid-template-columns: 1fr;
+  }
+}

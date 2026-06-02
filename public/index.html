@@ -3,134 +3,211 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SillyTavern 渲染卡写卡机器</title>
-  <link rel="stylesheet" href="/styles.css">
+  <title>SillyTavern 世界书卡写卡机器</title>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body data-theme="dark">
   <header class="topbar">
-    <div>
-      <h1>SillyTavern 渲染卡写卡机器</h1>
-      <p>独立工具，导出 TavernCard V2 JSON 与 Regex JSON。</p>
+    <div class="brand">
+      <span class="brand-mark">WB</span>
+      <div>
+        <h1>世界书卡写卡机器</h1>
+        <p>AI 先规划，用户只做判断和少量修改；导出 SillyTavern 可导入的世界书卡包。</p>
+      </div>
     </div>
-    <div class="topbar-actions">
-      <select id="themeSelect" aria-label="主题">
-        <option value="dark">暗色</option>
-        <option value="light">浅色</option>
-        <option value="contrast">高对比</option>
-      </select>
-      <button id="validateButton">校验</button>
-      <button id="exportCardButton">导出角色卡 JSON</button>
-      <button id="exportRegexButton">导出正则 JSON</button>
-      <button id="copyCardButton">复制完整 JSON</button>
-      <button id="copyRegexPreviewButton">复制正则测试结果</button>
+    <div class="action-grid" aria-label="导出与检查">
+      <div class="action-item">
+        <button id="validateBtn" type="button">检查能否导入</button>
+        <small>检查格式是否符合 SillyTavern。</small>
+      </div>
+      <div class="action-item">
+        <button id="exportCardBtn" type="button">下载世界书角色卡</button>
+        <small>下载可导入角色卡，内含世界书。</small>
+      </div>
+      <div class="action-item">
+        <button id="exportWorldBtn" type="button">下载世界书JSON</button>
+        <small>下载独立 World Info 文件。</small>
+      </div>
+      <div class="action-item">
+        <button id="exportRegexBtn" type="button">下载正则</button>
+        <small>下载 Regex 扩展正则文件。</small>
+      </div>
+      <div class="action-item">
+        <button id="copyCardBtn" type="button">复制卡片JSON</button>
+        <small>复制完整角色卡文本。</small>
+      </div>
+      <div class="action-item">
+        <button id="copyRegexPreviewBtn" type="button">复制正则预览</button>
+        <small>复制正则替换后的测试文本。</small>
+      </div>
     </div>
   </header>
 
-  <main class="workspace">
-    <aside class="panel settings-panel">
-      <section>
-        <h2>API 配置</h2>
-        <label>Base URL
-          <input id="baseUrl" placeholder="https://api.openai.com/v1">
+  <main class="workbench">
+    <aside class="rail left-rail">
+      <section class="panel">
+        <div class="panel-title">
+          <h2>API 配置</h2>
+          <span id="apiState" class="state-pill">未测试</span>
+        </div>
+        <label>
+          Base URL
+          <input id="baseUrl" type="url" placeholder="http://localhost:11434/v1">
         </label>
-        <label>API Key
-          <input id="apiKey" type="password" placeholder="sk-...">
+        <label>
+          API Key
+          <input id="apiKey" type="password" placeholder="仅本次页面使用，不写入仓库">
         </label>
-        <label>Model
-          <input id="model" placeholder="gpt-4.1-mini">
+        <label>
+          Model
+          <input id="model" type="text" placeholder="gpt-4o-mini / local-model">
         </label>
-        <div class="grid-2">
-          <label>Temperature
-            <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.8">
+        <div class="split-fields">
+          <label>
+            Temperature
+            <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.7">
           </label>
-          <label>Max Tokens
-            <input id="maxTokens" type="number" min="256" max="8000" step="128" value="1800">
+          <label>
+            Max Tokens
+            <input id="maxTokens" type="number" min="256" max="12000" step="256" value="3200">
           </label>
         </div>
+        <button id="testConnectionBtn" class="wide" type="button">测试连接</button>
+        <div id="apiFeedback" class="feedback muted">会测试 /models；不支持时用轻量 chat 请求。</div>
       </section>
 
-      <section>
-        <h2>提示词预设</h2>
-        <div class="preset-list">
-          <label>OpenAI 预设 JSON<input type="file" data-preset="openai" accept="application/json"></label>
-          <label>Instruct JSON<input type="file" data-preset="instruct" accept="application/json"></label>
-          <label>Context JSON<input type="file" data-preset="context" accept="application/json"></label>
-          <label>System Prompt JSON<input type="file" data-preset="sysprompt" accept="application/json"></label>
+      <section class="panel">
+        <div class="panel-title">
+          <h2>提示词预设</h2>
+          <span id="presetState" class="state-pill">未导入</span>
         </div>
-        <div id="presetStatus" class="status-list"></div>
+        <label class="file-drop">
+          <input id="presetFile" type="file" accept="application/json,.json">
+          <span>导入 JSON 预设</span>
+        </label>
+        <div id="presetFeedback" class="preset-feedback muted">自动识别 OpenAI / Instruct / Context / System Prompt，并显示关键字段数量。</div>
       </section>
 
-      <section>
-        <h2>生成需求</h2>
-        <textarea id="brief" rows="9" placeholder="写出角色设定需求、世界观、风格、禁忌、口吻、标签等。"></textarea>
-        <button id="generateButton" class="wide primary">调用 API 生成</button>
-        <button id="sampleButton" class="wide">填入示例卡</button>
+      <section class="panel">
+        <div class="panel-title">
+          <h2>生成设置</h2>
+        </div>
+        <label class="checkline">
+          <input id="planMode" type="checkbox" checked>
+          <span>Plan 模式：先大纲后成卡</span>
+        </label>
+        <label class="checkline">
+          <input id="embedRegex" type="checkbox" checked>
+          <span>把正则同步嵌入角色卡</span>
+        </label>
+        <label>
+          预览主题
+          <select id="themeSelect">
+            <option value="dark">暗色</option>
+            <option value="light">浅色</option>
+            <option value="contrast">高对比</option>
+          </select>
+        </label>
       </section>
     </aside>
 
-    <section class="panel editor-panel">
-      <div class="panel-head">
-        <h2>结构化编辑器</h2>
-        <span id="validationBadge" class="badge muted">未校验</span>
-      </div>
-
-      <div class="field-grid">
-        <label>角色名<input data-field="name"></label>
-        <label>创建者<input data-field="creator"></label>
-        <label>版本<input data-field="character_version"></label>
-        <label>标签（逗号分隔）<input data-field="tags"></label>
-      </div>
-
-      <label>简介 / Description
-        <textarea data-field="description" rows="6"></textarea>
-      </label>
-      <label>性格 / Personality
-        <textarea data-field="personality" rows="5"></textarea>
-      </label>
-      <label>场景 / Scenario
-        <textarea data-field="scenario" rows="5"></textarea>
-      </label>
-      <label>首语 / First Message
-        <textarea data-field="first_mes" rows="5"></textarea>
-      </label>
-      <label>示例对话 / Example Dialogue
-        <textarea data-field="mes_example" rows="6"></textarea>
-      </label>
-      <label>系统提示 / System Prompt
-        <textarea data-field="system_prompt" rows="4"></textarea>
-      </label>
-      <label>后历史指令 / Post-History Instructions
-        <textarea data-field="post_history_instructions" rows="4"></textarea>
-      </label>
-      <label>作者备注 / Creator Notes
-        <textarea data-field="creator_notes" rows="4"></textarea>
-      </label>
-      <label>备用开场白（每行一条）
-        <textarea data-field="alternate_greetings" rows="4"></textarea>
-      </label>
-
-      <section class="regex-editor">
-        <div class="panel-head">
-          <h2>正则脚本</h2>
-          <button id="addRegexButton">新增正则</button>
+    <section class="center-rail">
+      <section class="panel ai-panel">
+        <div class="panel-title">
+          <h2>AI 世界书工作流</h2>
+          <span id="workflowState" class="state-pill">待输入</span>
         </div>
-        <div id="regexList"></div>
+        <label>
+          生成需求
+          <textarea id="brief" rows="8" placeholder="写清世界观、类型、势力、地点、剧情变量、触发关键词、希望 AI 记住的规则。"></textarea>
+        </label>
+        <div class="button-row">
+          <button id="generatePlanBtn" type="button">生成计划</button>
+          <button id="generateWorldbookBtn" class="primary" type="button">根据计划生成世界书卡</button>
+        </div>
+        <div id="workflowFeedback" class="feedback muted">Plan 模式会先生成结构大纲，确认后再扩写条目。</div>
       </section>
+
+      <section class="panel">
+        <div class="panel-title">
+          <h2>Plan 大纲</h2>
+          <span id="planState" class="state-pill">无大纲</span>
+        </div>
+        <textarea id="planJson" rows="10" spellcheck="false" placeholder="AI 生成的世界书结构计划会显示在这里，也可以手动微调 JSON。"></textarea>
+        <div id="planOutline" class="outline-list"></div>
+      </section>
+
+      <details class="panel compact-editor" open>
+        <summary>结构化细节编辑（少量人工修）</summary>
+        <div class="editor-grid">
+          <label>
+            世界书名
+            <input id="worldName" type="text">
+          </label>
+          <label>
+            标签
+            <input id="worldTags" type="text" placeholder="worldbook-card, fantasy">
+          </label>
+          <label class="full">
+            简介
+            <textarea id="worldDesc" rows="3"></textarea>
+          </label>
+        </div>
+        <div class="entry-layout">
+          <div>
+            <div class="panel-title slim">
+              <h3>条目</h3>
+              <button id="addEntryBtn" type="button">添加条目</button>
+            </div>
+            <div id="entryList" class="entry-list"></div>
+          </div>
+          <div id="entryEditor" class="entry-editor muted">选择或添加条目后可编辑。</div>
+        </div>
+      </details>
+
+      <details class="panel">
+        <summary>正则与测试文本</summary>
+        <label>
+          Regex JSON
+          <textarea id="regexScriptsJson" rows="8" spellcheck="false" placeholder="[]"></textarea>
+        </label>
+        <div class="button-row">
+          <button id="applyRegexBtn" type="button">应用正则JSON</button>
+        </div>
+        <label>
+          正则测试文本
+          <textarea id="regexTestText" rows="5" placeholder="输入聊天文本，右侧会显示替换前后结果。"></textarea>
+        </label>
+      </details>
     </section>
 
-    <aside class="panel preview-panel">
-      <div id="renderCard" class="render-card"></div>
-      <section class="preview-tools">
-        <h2>首语预览</h2>
-        <div id="firstMessagePreview" class="message-preview"></div>
-        <h2>正则效果预览</h2>
-        <textarea id="regexTestText" rows="5" placeholder="输入测试文本，右侧会按当前正则脚本预览替换结果。"></textarea>
-        <pre id="regexPreviewOutput"></pre>
+    <aside class="rail preview-rail">
+      <section class="panel preview-panel">
+        <div class="panel-title">
+          <h2>渲染卡预览</h2>
+          <span id="previewState" class="state-pill">实时</span>
+        </div>
+        <div id="renderPreview" class="render-preview"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-title">
+          <h2>正则效果预览</h2>
+        </div>
+        <div class="regex-result">
+          <span>替换后</span>
+          <pre id="regexPreviewOutput"></pre>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-title">
+          <h2>检查反馈</h2>
+        </div>
+        <div id="validationOutput" class="validation-output muted">尚未检查。</div>
       </section>
     </aside>
   </main>
 
-  <div id="toast" class="toast" role="status"></div>
-  <script type="module" src="/app.js"></script>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
 </body>
 </html>
