@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SillyTavern 渲染卡写卡机器</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-theme="dark">
+  <header class="topbar">
+    <div>
+      <h1>SillyTavern 渲染卡写卡机器</h1>
+      <p>独立工具，导出 TavernCard V2 JSON 与 Regex JSON。</p>
+    </div>
+    <div class="topbar-actions">
+      <select id="themeSelect" aria-label="主题">
+        <option value="dark">暗色</option>
+        <option value="light">浅色</option>
+        <option value="contrast">高对比</option>
+      </select>
+      <button id="validateButton">校验</button>
+      <button id="exportCardButton">导出角色卡 JSON</button>
+      <button id="exportRegexButton">导出正则 JSON</button>
+      <button id="copyCardButton">复制完整 JSON</button>
+      <button id="copyRegexPreviewButton">复制正则测试结果</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="panel settings-panel">
+      <section>
+        <h2>API 配置</h2>
+        <label>Base URL
+          <input id="baseUrl" placeholder="https://api.openai.com/v1">
+        </label>
+        <label>API Key
+          <input id="apiKey" type="password" placeholder="sk-...">
+        </label>
+        <label>Model
+          <input id="model" placeholder="gpt-4.1-mini">
+        </label>
+        <div class="grid-2">
+          <label>Temperature
+            <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.8">
+          </label>
+          <label>Max Tokens
+            <input id="maxTokens" type="number" min="256" max="8000" step="128" value="1800">
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>提示词预设</h2>
+        <div class="preset-list">
+          <label>OpenAI 预设 JSON<input type="file" data-preset="openai" accept="application/json"></label>
+          <label>Instruct JSON<input type="file" data-preset="instruct" accept="application/json"></label>
+          <label>Context JSON<input type="file" data-preset="context" accept="application/json"></label>
+          <label>System Prompt JSON<input type="file" data-preset="sysprompt" accept="application/json"></label>
+        </div>
+        <div id="presetStatus" class="status-list"></div>
+      </section>
+
+      <section>
+        <h2>生成需求</h2>
+        <textarea id="brief" rows="9" placeholder="写出角色设定需求、世界观、风格、禁忌、口吻、标签等。"></textarea>
+        <button id="generateButton" class="wide primary">调用 API 生成</button>
+        <button id="sampleButton" class="wide">填入示例卡</button>
+      </section>
+    </aside>
+
+    <section class="panel editor-panel">
+      <div class="panel-head">
+        <h2>结构化编辑器</h2>
+        <span id="validationBadge" class="badge muted">未校验</span>
+      </div>
+
+      <div class="field-grid">
+        <label>角色名<input data-field="name"></label>
+        <label>创建者<input data-field="creator"></label>
+        <label>版本<input data-field="character_version"></label>
+        <label>标签（逗号分隔）<input data-field="tags"></label>
+      </div>
+
+      <label>简介 / Description
+        <textarea data-field="description" rows="6"></textarea>
+      </label>
+      <label>性格 / Personality
+        <textarea data-field="personality" rows="5"></textarea>
+      </label>
+      <label>场景 / Scenario
+        <textarea data-field="scenario" rows="5"></textarea>
+      </label>
+      <label>首语 / First Message
+        <textarea data-field="first_mes" rows="5"></textarea>
+      </label>
+      <label>示例对话 / Example Dialogue
+        <textarea data-field="mes_example" rows="6"></textarea>
+      </label>
+      <label>系统提示 / System Prompt
+        <textarea data-field="system_prompt" rows="4"></textarea>
+      </label>
+      <label>后历史指令 / Post-History Instructions
+        <textarea data-field="post_history_instructions" rows="4"></textarea>
+      </label>
+      <label>作者备注 / Creator Notes
+        <textarea data-field="creator_notes" rows="4"></textarea>
+      </label>
+      <label>备用开场白（每行一条）
+        <textarea data-field="alternate_greetings" rows="4"></textarea>
+      </label>
+
+      <section class="regex-editor">
+        <div class="panel-head">
+          <h2>正则脚本</h2>
+          <button id="addRegexButton">新增正则</button>
+        </div>
+        <div id="regexList"></div>
+      </section>
+    </section>
+
+    <aside class="panel preview-panel">
+      <div id="renderCard" class="render-card"></div>
+      <section class="preview-tools">
+        <h2>首语预览</h2>
+        <div id="firstMessagePreview" class="message-preview"></div>
+        <h2>正则效果预览</h2>
+        <textarea id="regexTestText" rows="5" placeholder="输入测试文本，右侧会按当前正则脚本预览替换结果。"></textarea>
+        <pre id="regexPreviewOutput"></pre>
+      </section>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
