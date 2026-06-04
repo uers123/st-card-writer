@@ -58,6 +58,16 @@ D:\python\SillyTavern\SillyTavern-release\public\scripts\extensions\third-party\
 
 After restarting SillyTavern, open the extensions wand menu or character management menu and select `世界书卡视图`. The extension only activates for cards with `data.extensions.st_card_writer.kind = "worldbook-card"`.
 
+## Project Structure
+
+- `server.js`: Express entrypoint and static file hosting.
+- `src/routes.js`: API route registration and export response assembly.
+- `src/worldbook.js`: worldbook normalization, validation, embedded card export, and standalone World Info export.
+- `src/openai.js`: OpenAI-compatible connection test, plan generation, and worldbook generation.
+- `public/app.js`: browser workflow orchestration.
+- `public/modules/`: browser-side API, state, rendering, and UI utility modules.
+- `sillytavern-extension/st-card-writer-viewer/`: third-party SillyTavern viewer extension source.
+
 ## Test
 
 ```powershell

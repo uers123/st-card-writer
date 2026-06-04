@@ -1,20 +1,23 @@
-const state = {
-  presets: {},
-  presetAnalyses: [],
-  plan: null,
-  worldbook: null,
-  card: null,
-  worldInfo: null,
-  characterBook: null,
-  regexScripts: [],
-  preview: null,
-  selectedEntryId: null,
-  exportCache: null,
-  previewTimer: null,
-};
-
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+import { getJson, postJson } from './modules/api.js';
+import {
+  renderConnectionFeedback,
+  renderEntryEditor as renderEntryEditorView,
+  renderEntryList as renderEntryListView,
+  renderPlanOutline as renderPlanOutlineView,
+  renderPresetFeedback as renderPresetFeedbackView,
+  renderPreview as renderPreviewView,
+  renderRegexPreview as renderRegexPreviewView,
+  renderValidation,
+} from './modules/renderers.js';
+import { emptyWorldbook, state } from './modules/state.js';
+import {
+  $,
+  downloadText,
+  setBusy,
+  setStatePill,
+  showToast,
+  splitList,
+} from './modules/ui.js';
 
 document.addEventListener('DOMContentLoaded', init);
 
@@ -239,21 +242,7 @@ function renderAll() {
 }
 
 function renderPresetFeedback() {
-  if (state.presetAnalyses.length === 0) {
-    $('#presetFeedback').textContent = '尚未导入预设。';
-    return;
-  }
-
-  $('#presetFeedback').innerHTML = state.presetAnalyses.map((item) => `
-    <div class="message-list">
-      <div class="${item.valid ? 'ok' : 'error'}">
-        <strong>${escapeHtml(item.fileName)}</strong>：${escapeHtml(item.recognizedType)}
-        · 关键字段 ${item.keyCount}
-      </div>
-      ${item.fields?.length ? `<div>字段：${escapeHtml(item.fields.join(', '))}</div>` : ''}
-      ${item.errors?.map((error) => `<div class="error">${escapeHtml(error)}</div>`).join('') || ''}
-    </div>
-  `).join('');
+  renderPresetFeedbackView(state.presetAnalyses);
 }
 
 function renderPlanOutline() {
@@ -265,146 +254,32 @@ function renderPlanOutline() {
   }
 
   setStatePill($('#planState'), `${plan.entries?.length || 0} 条`, 'ok');
-  $('#planOutline').innerHTML = (plan.entries || []).map((entry) => `
-    <div class="outline-item">
-      <strong>${escapeHtml(entry.title || '未命名条目')}</strong>
-      <span>${escapeHtml(entry.group || 'Core')} · ${escapeHtml((entry.keys || []).join(', ') || '无关键词')}</span>
-      <span>${escapeHtml(entry.purpose || '')}</span>
-    </div>
-  `).join('');
+  renderPlanOutlineView(plan);
 }
 
 function renderEntryList() {
   const entries = state.worldbook?.entries || [];
-  if (entries.length === 0) {
-    $('#entryList').innerHTML = '<div class="feedback muted">暂无条目。AI 生成后会出现在这里。</div>';
-    return;
-  }
-
-  if (!entries.some((entry) => entry.id === state.selectedEntryId)) {
+  if (entries.length > 0 && !entries.some((entry) => entry.id === state.selectedEntryId)) {
     state.selectedEntryId = entries[0].id;
   }
 
-  $('#entryList').innerHTML = entries.map((entry) => `
-    <button type="button" data-entry-id="${entry.id}" class="${entry.id === state.selectedEntryId ? 'active' : ''}">
-      ${escapeHtml(entry.title || '未命名条目')}
-      <small>${escapeHtml(entry.group || 'Core')} · ${entry.keys?.length || 0} 关键词</small>
-    </button>
-  `).join('');
+  renderEntryListView(entries, state.selectedEntryId);
 }
 
 function renderEntryEditor() {
-  const entry = selectedEntry();
-  if (!entry) {
-    $('#entryEditor').innerHTML = '选择或添加条目后可编辑。';
-    return;
-  }
-
-  $('#entryEditor').innerHTML = `
-    <div class="entry-editor-grid">
-      <label>标题<input data-field="title" type="text" value="${escapeAttr(entry.title)}"></label>
-      <label>分组<input data-field="group" type="text" value="${escapeAttr(entry.group)}"></label>
-      <label class="full">关键词<input data-field="keys" type="text" value="${escapeAttr((entry.keys || []).join(', '))}"></label>
-      <label class="full">次级关键词<input data-field="secondaryKeys" type="text" value="${escapeAttr((entry.secondaryKeys || []).join(', '))}"></label>
-      <label>位置
-        <select data-field="position">
-          ${positionOptions(entry.position)}
-        </select>
-      </label>
-      <label>优先级<input data-field="priority" type="number" value="${Number(entry.priority || 100)}"></label>
-      <label class="checkline"><input data-field="enabled" type="checkbox" ${entry.enabled ? 'checked' : ''}><span>启用</span></label>
-      <label class="checkline"><input data-field="constant" type="checkbox" ${entry.constant ? 'checked' : ''}><span>常驻</span></label>
-      <label>图片 URL<input data-field="imageUrl" type="url" value="${escapeAttr(entry.imageUrl || '')}"></label>
-      <label>主题色<input data-field="color" type="color" value="${escapeAttr(entry.color || '#24b47e')}"></label>
-      <label class="full">正文<textarea data-field="content" rows="8">${escapeHtml(entry.content || '')}</textarea></label>
-    </div>
-    <div class="button-row">
-      <button type="button" id="deleteEntryBtn">删除条目</button>
-    </div>
-  `;
-  $('#deleteEntryBtn').addEventListener('click', deleteSelectedEntry);
+  renderEntryEditorView(selectedEntry(), deleteSelectedEntry);
 }
 
 function renderPreview() {
-  const preview = state.preview;
-  if (!preview) {
-    $('#renderPreview').innerHTML = '<div class="feedback muted">生成或编辑后会显示预览。</div>';
-    return;
-  }
-
-  const header = preview.header || {};
-  const accent = header.accentColor || '#24b47e';
-  $('#renderPreview').innerHTML = `
-    <article class="world-card" style="--accent:${escapeAttr(accent)}">
-      <header class="world-hero">
-        <div class="world-cover">${renderImageOrText(header.coverImageUrl, initials(header.name || 'WB'))}</div>
-        <div>
-          <h3>${escapeHtml(header.name || '未命名世界书')}</h3>
-          <p>${escapeHtml(header.subtitle || '')}</p>
-          <div class="tag-row">${(preview.tags || []).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
-        </div>
-      </header>
-      <div class="stat-row">
-        <span class="stat">核心完整度 ${preview.completion?.core || 0}%</span>
-        <span class="stat">条目完整度 ${preview.completion?.entries || 0}%</span>
-        <span class="stat">${preview.metrics?.entries || 0} 条目</span>
-        <span class="stat">${preview.metrics?.estimatedTokens || 0} tokens 估算</span>
-      </div>
-      ${renderPreviewSections(preview.sections || [])}
-      ${renderPreviewGroups(preview.groups || [])}
-    </article>
-  `;
-}
-
-function renderPreviewSections(sections) {
-  return sections.map((section) => `
-    <details class="preview-section" ${section.empty ? '' : 'open'}>
-      <summary>${escapeHtml(section.title)} · ${section.estimatedTokens || 0} tokens</summary>
-      <pre>${escapeHtml(section.content || '(空)')}</pre>
-    </details>
-  `).join('');
-}
-
-function renderPreviewGroups(groups) {
-  if (groups.length === 0) {
-    return '<div class="preview-group muted">暂无世界书条目。</div>';
-  }
-
-  return groups.map((group) => `
-    <details class="preview-group" open>
-      <summary>${escapeHtml(group.name)} · ${group.entries.length} 条 · 启用 ${group.enabled}</summary>
-      ${group.entries.map(renderPreviewEntry).join('')}
-    </details>
-  `).join('');
-}
-
-function renderPreviewEntry(entry) {
-  return `
-    <div class="preview-entry ${entry.enabled ? '' : 'disabled-entry'}" style="--entry-color:${escapeAttr(entry.color || '#24b47e')}">
-      <div class="preview-entry-head">
-        <div class="entry-thumb">${renderImageOrText(entry.imageUrl, entry.placeholder || initials(entry.title))}</div>
-        <div class="entry-meta">
-          <h4>${escapeHtml(entry.title)}</h4>
-          <p>${escapeHtml(entry.positionLabel || '')} · 优先级 ${Number(entry.priority || 0)} · ${entry.enabled ? '启用' : '禁用'}</p>
-          <div class="keyword-row">${(entry.keys || []).map((key) => `<span class="keyword">${escapeHtml(key)}</span>`).join('')}</div>
-        </div>
-      </div>
-      <pre>${escapeHtml(entry.content || '(空)')}</pre>
-    </div>
-  `;
+  renderPreviewView(state.preview);
 }
 
 function renderRegexPreview() {
-  const output = state.preview?.regexPreview?.output || '';
-  $('#regexPreviewOutput').textContent = output || '暂无正则预览。';
+  renderRegexPreviewView(state.preview);
 }
 
 function applyValidation(result) {
-  const lines = [];
-  lines.push(`<div class="${result.valid ? 'ok' : 'error'}">${result.valid ? '可以导入。' : '暂不能导入。'}</div>`);
-  for (const error of result.errors || []) lines.push(`<div class="error">${escapeHtml(error)}</div>`);
-  for (const warning of result.warnings || []) lines.push(`<div class="warning">${escapeHtml(warning)}</div>`);
-  $('#validationOutput').innerHTML = `<div class="message-list">${lines.join('')}</div>`;
+  renderValidation(result);
 }
 
 function onEntryListClick(event) {
@@ -564,131 +439,7 @@ function readApiConfig() {
   };
 }
 
-function emptyWorldbook() {
-  return {
-    name: '',
-    description: '',
-    summary: '',
-    tags: ['worldbook-card'],
-    creator: '',
-    version: '1.0.0',
-    entries: [],
-  };
-}
-
 function presetStateKey(type) {
   if (type === 'system_prompt') return 'system_prompt';
   return type || 'unknown';
-}
-
-function splitList(value) {
-  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
-}
-
-function positionOptions(selected) {
-  const options = [
-    [0, 'Before Character'],
-    [1, 'After Character'],
-    [2, 'Author Note Top'],
-    [3, 'Author Note Bottom'],
-    [4, 'At Depth'],
-    [5, 'Example Message Top'],
-    [6, 'Example Message Bottom'],
-    [7, 'Outlet'],
-  ];
-  return options.map(([value, label]) => `<option value="${value}" ${Number(selected) === value ? 'selected' : ''}>${label}</option>`).join('');
-}
-
-async function getJson(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(await response.text());
-  return response.json();
-}
-
-async function postJson(url, payload) {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const text = await response.text();
-  let parsed = {};
-  try {
-    parsed = text ? JSON.parse(text) : {};
-  } catch {
-    parsed = { message: text };
-  }
-  if (!response.ok) throw new Error(parsed.error || parsed.message || text || `HTTP ${response.status}`);
-  return parsed;
-}
-
-function downloadText(fileName, text) {
-  const blob = new Blob([text || ''], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-function setBusy(selector, busy, text) {
-  const button = $(selector);
-  button.disabled = busy;
-  button.textContent = text;
-}
-
-function setStatePill(element, text, status = '') {
-  element.textContent = text;
-  element.classList.remove('ok', 'warn', 'fail');
-  if (status) element.classList.add(status);
-}
-
-function renderConnectionFeedback(result) {
-  const modelLine = result.modelAvailable === null
-    ? '未指定模型，未检查模型是否可用。'
-    : result.modelAvailable
-      ? '当前模型可用。'
-      : '当前模型不在 /models 列表中，可能仍可通过 chat 请求使用。';
-  return `
-    <div class="message-list">
-      <div class="${result.ok ? 'ok' : 'error'}">${escapeHtml(result.message || '')}</div>
-      <div>测试方式：${escapeHtml(result.method || 'unknown')}</div>
-      <div>${escapeHtml(modelLine)}</div>
-    </div>
-  `;
-}
-
-function renderImageOrText(url, text) {
-  if (url) {
-    return `<img src="${escapeAttr(url)}" alt="">`;
-  }
-  return escapeHtml(text || 'WB');
-}
-
-function initials(value) {
-  return String(value || 'WB').split(/\s+/).filter(Boolean).slice(0, 2).map((item) => item[0]?.toUpperCase()).join('') || 'WB';
-}
-
-function showToast(message) {
-  const toast = $('#toast');
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => toast.classList.remove('show'), 2600);
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
-function escapeAttr(value) {
-  return escapeHtml(value).replaceAll('`', '&#96;');
 }
