@@ -1,3 +1,5 @@
+import { isObject } from './value-utils.js';
+
 export function analyzePresetJson(input, fileName = 'preset.json') {
   const errors = [];
   let parsed = input;
@@ -125,8 +127,4 @@ function detectSystemPromptPreset(value) {
     keyCount: fields.length,
     fields,
   };
-}
-
-function isObject(value) {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }

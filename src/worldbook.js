@@ -1,5 +1,6 @@
 import { normalizeCard, validateCard } from './card.js';
 import { previewRegexScripts, validateRegexScripts } from './regex.js';
+import { clamp, estimateTokens, isObject, number, text, toStringArray, uniqueStrings } from './value-utils.js';
 
 export const WORLD_INFO_POSITIONS = Object.freeze({
   before: 0,
@@ -533,37 +534,6 @@ function normalizeColor(value) {
   return /^#[0-9a-f]{6}$/i.test(textValue) ? textValue : '#58a6ff';
 }
 
-function text(value) {
-  return typeof value === 'string' ? value : value == null ? '' : String(value);
-}
-
-function number(value, fallback) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : fallback;
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function toStringArray(value) {
-  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
-  if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
-  return [];
-}
-
-function uniqueStrings(values) {
-  return Array.from(new Set(values.map(String).map((item) => item.trim()).filter(Boolean)));
-}
-
 function initials(value) {
   return text(value).split(/\s+/).filter(Boolean).slice(0, 2).map((item) => item[0]?.toUpperCase()).join('') || 'WB';
-}
-
-function estimateTokens(value) {
-  return Math.ceil(String(value || '').length / 3.5);
-}
-
-function isObject(value) {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
