@@ -26,11 +26,24 @@ export function renderPresetFeedback(analyses) {
 }
 
 export function renderPlanOutline(plan) {
-  $('#planOutline').innerHTML = (plan?.entries || []).map((entry) => `
-    <div class="outline-item">
-      <strong>${escapeHtml(entry.title || '未命名条目')}</strong>
-      <span>${escapeHtml(entry.group || 'Core')} · ${escapeHtml((entry.keys || []).join(', ') || '无关键词')}</span>
-      <span>${escapeHtml(entry.purpose || '')}</span>
+  const entries = Array.isArray(plan?.entries) ? plan.entries : [];
+  if (entries.length === 0) {
+    $('#planOutline').innerHTML = '<div class="feedback muted">暂无大纲条目。AI 生成 Plan 后可在这里删改。</div>';
+    return;
+  }
+
+  $('#planOutline').innerHTML = entries.map((entry, index) => `
+    <div class="outline-item plan-outline-editor" data-plan-entry-index="${index}">
+      <div class="plan-outline-head">
+        <strong>条目 ${index + 1}</strong>
+        <button type="button" class="danger-button" data-plan-delete-index="${index}">删除</button>
+      </div>
+      <div class="plan-outline-grid">
+        <label>标题<input data-plan-field="title" type="text" value="${escapeAttr(entry.title || '')}"></label>
+        <label>分组<input data-plan-field="group" type="text" value="${escapeAttr(entry.group || 'Core')}"></label>
+        <label class="full">关键词<input data-plan-field="keys" type="text" value="${escapeAttr(planKeysText(entry))}"></label>
+        <label class="full">用途<textarea data-plan-field="purpose" rows="3">${escapeHtml(entry.purpose || '')}</textarea></label>
+      </div>
     </div>
   `).join('');
 }
@@ -174,4 +187,9 @@ function renderPreviewEntry(entry) {
       <pre>${escapeHtml(entry.content || '(空)')}</pre>
     </div>
   `;
+}
+
+function planKeysText(entry) {
+  if (Array.isArray(entry?.keys)) return entry.keys.join(', ');
+  return entry?.keys ? String(entry.keys) : '';
 }

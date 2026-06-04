@@ -336,6 +336,41 @@ p {
   line-height: 1.4;
 }
 
+.plan-outline-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.plan-outline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plan-outline-head strong {
+  margin-bottom: 0;
+}
+
+.plan-outline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.plan-outline-grid .full {
+  grid-column: 1 / -1;
+}
+
+.plan-outline-grid textarea {
+  resize: vertical;
+}
+
+.danger-button {
+  border-color: rgba(255, 99, 99, 0.45);
+  color: #ff8d8d;
+}
+
 details.panel > summary {
   cursor: pointer;
   font-weight: 700;
@@ -615,6 +650,7 @@ details.panel > summary {
   .editor-grid,
   .entry-layout,
   .entry-editor-grid,
+  .plan-outline-grid,
   .world-hero {
     grid-template-columns: 1fr;
   }

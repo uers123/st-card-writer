@@ -1,4 +1,5 @@
 import { getJson, postJson } from './modules/api.js';
+import { deletePlanEntry, ensurePlanEntries, updatePlanEntry } from './modules/plan-editor.js';
 import {
   renderConnectionFeedback,
   renderEntryEditor as renderEntryEditorView,
@@ -58,6 +59,8 @@ function bindEvents() {
   $('#regexTestText').addEventListener('input', schedulePreview);
   $('#brief').addEventListener('input', () => setStatePill($('#workflowState'), $('#brief').value.trim() ? '已输入' : '待输入'));
   $('#planJson').addEventListener('input', onPlanEdited);
+  $('#planOutline').addEventListener('input', onPlanOutlineInput);
+  $('#planOutline').addEventListener('click', onPlanOutlineClick);
   $('#worldName').addEventListener('input', () => updateWorldbookField('name', $('#worldName').value));
   $('#worldTags').addEventListener('input', () => updateWorldbookField('tags', splitList($('#worldTags').value)));
   $('#worldDesc').addEventListener('input', () => updateWorldbookField('description', $('#worldDesc').value));
@@ -298,6 +301,45 @@ function renderRegexPreview() {
 
 function applyValidation(result) {
   renderValidation(result);
+}
+
+function onPlanOutlineInput(event) {
+  const field = event.target.dataset.planField;
+  const item = event.target.closest('[data-plan-entry-index]');
+  if (!field || !item) return;
+
+  const plan = editablePlan();
+  if (!plan) return;
+
+  const index = Number.parseInt(item.dataset.planEntryIndex, 10);
+  if (updatePlanEntry(plan, index, field, event.target.value)) {
+    syncPlanJson(plan);
+  }
+}
+
+function onPlanOutlineClick(event) {
+  const button = event.target.closest('[data-plan-delete-index]');
+  if (!button) return;
+
+  const plan = editablePlan();
+  if (!plan) return;
+
+  const index = Number.parseInt(button.dataset.planDeleteIndex, 10);
+  if (deletePlanEntry(plan, index)) {
+    syncPlanJson(plan, { render: true });
+  }
+}
+
+function editablePlan() {
+  const plan = readPlanJson() || state.plan;
+  return ensurePlanEntries(plan) ? plan : null;
+}
+
+function syncPlanJson(plan, options = {}) {
+  state.plan = plan;
+  $('#planJson').value = JSON.stringify(plan, null, 2);
+  setStatePill($('#planState'), `${plan.entries.length} 条`, 'ok');
+  if (options.render) renderPlanOutline();
 }
 
 function onEntryListClick(event) {
