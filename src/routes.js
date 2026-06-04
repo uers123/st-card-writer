@@ -1,5 +1,6 @@
 import express from 'express';
 import { createEmptyCard, normalizeCard, validateCard } from './card.js';
+import { getSafeLocalConfig } from './local-config.js';
 import { analyzePresetJson } from './presets.js';
 import {
   generateCardWithOpenAICompatible,
@@ -21,6 +22,10 @@ export function createApiRouter() {
 
   router.get('/health', (_request, response) => {
     response.json({ ok: true, name: 'st-card-writer' });
+  });
+
+  router.get('/local-config', (_request, response) => {
+    response.json(getSafeLocalConfig());
   });
 
   router.get('/empty-card', (_request, response) => {

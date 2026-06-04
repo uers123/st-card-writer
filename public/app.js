@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   loadApiSettings();
+  await loadLocalConfigDefaults();
   bindEvents();
   try {
     const pack = await getJson('/api/empty-worldbook-card');
@@ -71,6 +72,23 @@ function loadApiSettings() {
   $('#model').value = saved.model || '';
   $('#temperature').value = saved.temperature ?? 0.7;
   $('#maxTokens').value = saved.maxTokens ?? 3200;
+}
+
+async function loadLocalConfigDefaults() {
+  try {
+    const localConfig = await getJson('/api/local-config');
+    if (!$('#baseUrl').value && localConfig.baseUrl) $('#baseUrl').value = localConfig.baseUrl;
+    if (!$('#model').value && localConfig.model) $('#model').value = localConfig.model;
+    if (localConfig.temperature && !localStorage.getItem('st-card-writer-api')) $('#temperature').value = localConfig.temperature;
+    if (localConfig.maxTokens && !localStorage.getItem('st-card-writer-api')) $('#maxTokens').value = localConfig.maxTokens;
+    if (localConfig.apiKeyConfigured) {
+      $('#apiKey').placeholder = 'Local API key configured';
+      setStatePill($('#apiState'), 'local default', 'ok');
+      $('#apiFeedback').textContent = 'Local API key is configured on this machine. It is not shown in the browser.';
+    }
+  } catch {
+    // Local config is optional.
+  }
 }
 
 function saveApiSettings() {

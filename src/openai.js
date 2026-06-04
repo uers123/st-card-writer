@@ -1,11 +1,13 @@
 import { normalizeCard, validateCard } from './card.js';
 import { createRegexScript, normalizeRegexScript } from './regex.js';
 import { normalizeWorldbookPackage, normalizeWorldbookPlan, validateWorldbook } from './worldbook.js';
+import { withLocalApiDefaults } from './local-config.js';
 
 export async function testOpenAICompatibleConnection({ api = {} }) {
-  const baseUrl = String(api.baseUrl || api.base_url || '').replace(/\/+$/, '');
-  const apiKey = String(api.apiKey || api.api_key || '');
-  const model = String(api.model || '');
+  const resolvedApi = withLocalApiDefaults(api);
+  const baseUrl = String(resolvedApi.baseUrl || '').replace(/\/+$/, '');
+  const apiKey = String(resolvedApi.apiKey || '');
+  const model = String(resolvedApi.model || '');
 
   if (!baseUrl) {
     return { ok: false, message: 'base_url is required.', models: [], modelAvailable: false };
@@ -107,9 +109,10 @@ export async function testOpenAICompatibleConnection({ api = {} }) {
 }
 
 export async function generateCardWithOpenAICompatible({ api, brief, presets = {}, generation = {} }) {
-  const baseUrl = String(api?.baseUrl || '').replace(/\/+$/, '');
-  const apiKey = String(api?.apiKey || '');
-  const model = String(api?.model || '');
+  const resolvedApi = withLocalApiDefaults(api);
+  const baseUrl = String(resolvedApi?.baseUrl || '').replace(/\/+$/, '');
+  const apiKey = String(resolvedApi?.apiKey || '');
+  const model = String(resolvedApi?.model || '');
 
   if (!baseUrl || !apiKey || !model) {
     throw new Error('baseUrl, apiKey and model are required.');
@@ -190,9 +193,10 @@ export async function generateWorldbookCard({ api, brief, plan = {}, presets = {
 }
 
 async function callJsonChat({ api = {}, generation = {}, messages, defaultMaxTokens }) {
-  const baseUrl = String(api?.baseUrl || api?.base_url || '').replace(/\/+$/, '');
-  const apiKey = String(api?.apiKey || api?.api_key || '');
-  const model = String(api?.model || '');
+  const resolvedApi = withLocalApiDefaults(api);
+  const baseUrl = String(resolvedApi?.baseUrl || '').replace(/\/+$/, '');
+  const apiKey = String(resolvedApi?.apiKey || '');
+  const model = String(resolvedApi?.model || '');
 
   if (!baseUrl || !apiKey || !model) {
     throw new Error('baseUrl, apiKey and model are required.');

@@ -11,6 +11,11 @@ test('api router exposes health and worldbook export endpoints', async (t) => {
   assert.equal(healthResponse.ok, true);
   assert.equal((await healthResponse.json()).name, 'st-card-writer');
 
+  const localConfigResponse = await fetch(`${baseUrl}/api/local-config`);
+  const localConfig = await localConfigResponse.json();
+  assert.equal(localConfigResponse.ok, true);
+  assert.equal(Object.hasOwn(localConfig, 'apiKey'), false);
+
   const exportResponse = await fetch(`${baseUrl}/api/export`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
