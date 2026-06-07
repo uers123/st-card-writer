@@ -192,6 +192,47 @@ export async function generateWorldbookCard({ api, brief, plan = {}, presets = {
   };
 }
 
+export async function refineWorldbookWithOpenAICompatible({
+  api,
+  worldbook,
+  card,
+  regexScripts = [],
+  instruction = '',
+  mode = 'summarize',
+  presets = {},
+  generation = {},
+} = {}) {
+  const currentPack = normalizeWorldbookPackage({ worldbook, card, regexScripts });
+  const parsed = await callJsonChat({
+    api,
+    generation,
+    messages: buildWorldbookRefineMessages(currentPack.worldbook, {
+      instruction,
+      mode,
+      presets,
+    }),
+    defaultMaxTokens: 3600,
+  });
+  const rawWorldbook = parsed.worldbook || parsed.worldInfo || parsed.character_book || parsed.card?.data?.character_book || parsed;
+  const rawRegex = parsed.regexScripts || parsed.regex_scripts || regexScripts;
+  const pack = normalizeWorldbookPackage({
+    worldbook: rawWorldbook,
+    card: parsed.card || currentPack.card,
+    regexScripts: Array.isArray(rawRegex) ? rawRegex.map(normalizeRegexScript) : rawRegex ? [normalizeRegexScript(rawRegex)] : [],
+  });
+  const validation = validateWorldbook(pack);
+
+  return {
+    worldbook: validation.worldbook,
+    card: validation.card,
+    worldInfo: validation.worldInfo,
+    characterBook: validation.characterBook,
+    regexScripts: pack.regexScripts,
+    changeSummary: String(parsed.changeSummary || parsed.change_summary || parsed.summary || '').trim(),
+    validation,
+  };
+}
+
 async function callJsonChat({ api = {}, generation = {}, messages, defaultMaxTokens }) {
   const resolvedApi = withLocalApiDefaults(api);
   const baseUrl = String(resolvedApi?.baseUrl || '').replace(/\/+$/, '');
@@ -294,6 +335,36 @@ function buildWorldbookCardMessages(brief, plan, presets) {
   ];
 }
 
+function buildWorldbookRefineMessages(worldbook, { instruction, mode, presets }) {
+  const normalizedMode = mode === 'modify' ? 'modify' : 'summarize';
+  const modeInstruction = normalizedMode === 'modify'
+    ? 'Apply the user instruction. You may add, modify, merge, disable, or delete entries only when it helps the requested change.'
+    : 'Summarize and condense the worldbook. Merge duplicates, shorten verbose content, preserve important canon, trigger keywords, groups, positions, and enabled/disabled intent.';
+
+  return [
+    {
+      role: 'system',
+      content: [
+        'You refine SillyTavern World Info / Lorebook data.',
+        'Return JSON only with keys: worldbook, changeSummary, regexScripts.',
+        'worldbook must include name, description, summary, tags, creator, version, first_mes, system_prompt, post_history_instructions, entries.',
+        'Each entry must include title, keys, secondaryKeys, triggerLogic, content, position, priority, group, enabled, imageUrl, placeholder, color.',
+        modeInstruction,
+        'Do not invent unrelated lore. Keep the result importable into SillyTavern.',
+      ].join('\n'),
+    },
+    {
+      role: 'user',
+      content: [
+        `Preset context:\n${presetText(presets) || '(none)'}`,
+        `Mode: ${normalizedMode}`,
+        `User instruction:\n${instruction || '(none)'}`,
+        `Current worldbook JSON:\n${trimForPrompt(JSON.stringify(worldbook, null, 2), 70000)}`,
+      ].join('\n\n'),
+    },
+  ];
+}
+
 function presetText(presets) {
   return [
     presets.sysprompt?.content || presets.system_prompt?.content || presets.systemPrompt?.content,
@@ -316,6 +387,12 @@ export function parseJsonContent(content) {
     if (start !== -1 && end > start) return JSON.parse(text.slice(start, end + 1));
     throw new Error('Generation did not contain valid JSON.');
   }
+}
+
+function trimForPrompt(value, maxChars) {
+  const text = String(value || '');
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars)}\n\n[TRUNCATED: source worldbook was longer than ${maxChars} characters. Preserve and refine the visible data.]`;
 }
 
 async function safeResponseText(response) {

@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyzePresetJson } from '../src/presets.js';
-import { generateWorldbookPlan, testOpenAICompatibleConnection } from '../src/openai.js';
+import { generateWorldbookPlan, refineWorldbookWithOpenAICompatible, testOpenAICompatibleConnection } from '../src/openai.js';
 import {
   buildWorldbookPreviewModel,
+  importWorldbookJson,
   normalizeWorldbookPackage,
   toStandaloneWorldInfo,
   validateWorldbook,
@@ -50,6 +51,78 @@ test('standalone World Info JSON contains entries object for SillyTavern import'
   assert.equal(worldInfo.entries['5'].uid, 5);
   assert.deepEqual(worldInfo.entries['5'].key, ['flood gate']);
   assert.equal(worldInfo.entries['5'].position, 1);
+});
+
+test('external SillyTavern World Info JSON imports into editable worldbook package', () => {
+  const result = importWorldbookJson({
+    fileName: 'outside.worldinfo.json',
+    content: JSON.stringify({
+      name: 'Outside Book',
+      description: 'Imported lore.',
+      entries: {
+        7: {
+          uid: 7,
+          key: ['outside gate'],
+          keysecondary: ['silver key'],
+          comment: 'Outside Gate',
+          content: 'The outside gate opens at dawn.',
+          order: 70,
+          position: 1,
+          group: 'Locations',
+          disable: false,
+        },
+      },
+    }),
+  });
+
+  assert.equal(result.importReport.sourceType, 'sillytavern_world_info');
+  assert.equal(result.importReport.entryCount, 1);
+  assert.equal(result.worldbook.name, 'Outside Book');
+  assert.equal(result.worldbook.entries[0].id, 7);
+  assert.deepEqual(result.worldbook.entries[0].keys, ['outside gate']);
+  assert.deepEqual(result.worldbook.entries[0].secondaryKeys, ['silver key']);
+  assert.equal(result.card.data.character_book.entries.length, 1);
+  assert.equal(validateWorldbook(result).valid, true);
+});
+
+test('embedded TavernCard character_book imports as a worldbook', () => {
+  const result = importWorldbookJson({
+    json: {
+      spec: 'chara_card_v2',
+      spec_version: '2.0',
+      data: {
+        name: 'Carrier',
+        description: 'Carrier card.',
+        personality: '',
+        scenario: '',
+        first_mes: 'Ready.',
+        mes_example: '',
+        alternate_greetings: [],
+        tags: ['imported'],
+        creator: 'tester',
+        character_version: '1.0.0',
+        extensions: {},
+        character_book: {
+          name: 'Embedded Book',
+          description: 'Embedded lore.',
+          entries: [{
+            id: 2,
+            keys: ['embedded'],
+            comment: 'Embedded Entry',
+            content: 'Embedded content.',
+            insertion_order: 55,
+            enabled: true,
+            position: 'before_char',
+          }],
+        },
+      },
+    },
+  });
+
+  assert.equal(result.importReport.sourceType, 'tavern_card_v2_character_book');
+  assert.equal(result.worldbook.name, 'Embedded Book');
+  assert.equal(result.worldbook.entries[0].title, 'Embedded Entry');
+  assert.equal(result.worldInfo.entries['2'].content, 'Embedded content.');
 });
 
 test('worldbook preview does not mutate card export data', () => {
@@ -162,4 +235,76 @@ test('generate worldbook plan parses JSON-only OpenAI-compatible response', asyn
 
   assert.equal(result.plan.worldName, 'Ash Rail');
   assert.equal(result.plan.entries[0].keys[0], 'cinder station');
+});
+
+test('AI worldbook refinement parses cleaned worldbook and change summary', async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = async (_url, init) => {
+    const request = JSON.parse(init.body);
+    assert.equal(request.response_format.type, 'json_object');
+    assert.match(request.messages[1].content, /Mode: summarize/);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              changeSummary: 'Merged duplicate lore and shortened the entry.',
+              regexScripts: [],
+              worldbook: {
+                name: 'Compact Book',
+                description: 'Short book.',
+                summary: 'Short book.',
+                tags: ['worldbook-card'],
+                creator: 'tester',
+                version: '1.0.0',
+                first_mes: '',
+                system_prompt: '',
+                post_history_instructions: '',
+                entries: [{
+                  title: 'Compact Gate',
+                  keys: ['gate'],
+                  secondaryKeys: [],
+                  triggerLogic: 'keyword',
+                  content: 'A shorter gate entry.',
+                  position: 0,
+                  priority: 100,
+                  group: 'Locations',
+                  enabled: true,
+                  imageUrl: '',
+                  placeholder: 'CG',
+                  color: '#58a6ff',
+                }],
+              },
+            }),
+          },
+        }],
+      }),
+      text: async () => '',
+    };
+  };
+
+  const result = await refineWorldbookWithOpenAICompatible({
+    api: { baseUrl: 'http://example.test/v1', apiKey: 'test', model: 'local-model' },
+    mode: 'summarize',
+    instruction: 'Shorten repeated lore.',
+    worldbook: {
+      name: 'Verbose Book',
+      description: 'Long book.',
+      entries: [{
+        title: 'Verbose Gate',
+        keys: ['gate'],
+        content: 'Long gate entry. Long gate entry.',
+      }],
+    },
+  });
+
+  assert.equal(result.changeSummary, 'Merged duplicate lore and shortened the entry.');
+  assert.equal(result.worldbook.name, 'Compact Book');
+  assert.equal(result.worldbook.entries[0].content, 'A shorter gate entry.');
+  assert.equal(result.validation.valid, true);
 });

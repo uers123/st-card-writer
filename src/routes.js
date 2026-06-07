@@ -6,6 +6,7 @@ import {
   generateCardWithOpenAICompatible,
   generateWorldbookCard,
   generateWorldbookPlan,
+  refineWorldbookWithOpenAICompatible,
   testOpenAICompatibleConnection,
 } from './openai.js';
 import { buildPreviewModel } from './render.js';
@@ -13,6 +14,7 @@ import { normalizeRegexScript, previewRegexScripts, validateRegexScripts } from 
 import {
   buildWorldbookPreviewModel,
   createEmptyWorldbook,
+  importWorldbookJson,
   normalizeWorldbookPackage,
   validateWorldbook,
 } from './worldbook.js';
@@ -63,6 +65,26 @@ export function createApiRouter() {
 
   router.post('/generate-worldbook-card', asyncHandler(async (request, response) => {
     const result = await generateWorldbookCard(request.body || {});
+    response.json({
+      ...result,
+      preview: buildWorldbookPreviewModel(result, previewOptions(request.body)),
+    });
+  }));
+
+  router.post('/import-worldbook', asyncHandler(async (request, response) => {
+    const result = importWorldbookJson({
+      content: request.body?.content,
+      json: request.body?.json || request.body?.worldbook || request.body,
+      fileName: request.body?.fileName,
+    });
+    response.json({
+      ...result,
+      preview: buildWorldbookPreviewModel(result, previewOptions(request.body)),
+    });
+  }));
+
+  router.post('/refine-worldbook', asyncHandler(async (request, response) => {
+    const result = await refineWorldbookWithOpenAICompatible(request.body || {});
     response.json({
       ...result,
       preview: buildWorldbookPreviewModel(result, previewOptions(request.body)),

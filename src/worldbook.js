@@ -134,6 +134,25 @@ export function normalizeWorldbookPackage(input = {}) {
   };
 }
 
+export function importWorldbookJson({ content, json, fileName = 'worldbook.json' } = {}) {
+  const parsed = parseWorldbookImportInput(content ?? json);
+  const source = selectImportSource(parsed);
+  const pack = normalizeWorldbookPackage(source.input);
+  const validation = validateWorldbook(pack);
+
+  return {
+    ...pack,
+    validation,
+    importReport: buildImportReport(pack.worldbook, {
+      fileName,
+      sourceType: source.type,
+      valid: validation.valid,
+      errors: validation.errors,
+      warnings: validation.warnings,
+    }),
+  };
+}
+
 export function createWorldbookCard(worldbookInput = {}, regexScripts = []) {
   const worldbook = normalizeWorldbook(worldbookInput);
   const card = normalizeCard({
@@ -339,6 +358,65 @@ function extractWorldbookSource(input = {}) {
   if (input.card?.data?.character_book) return input.card.data.character_book;
   if (input.data?.character_book) return input.data.character_book;
   return input;
+}
+
+function parseWorldbookImportInput(input) {
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    if (!trimmed) throw new Error('Imported worldbook JSON is empty.');
+    try {
+      return JSON.parse(trimmed);
+    } catch (error) {
+      throw new Error(`Imported worldbook JSON parse failed: ${error.message}`);
+    }
+  }
+  if (isObject(input)) return input;
+  throw new Error('Imported worldbook must be a JSON object or JSON text.');
+}
+
+function selectImportSource(parsed) {
+  if (parsed.worldbook || parsed.worldInfo || parsed.characterBook || parsed.card) {
+    return { type: parsed.worldbook ? 'st_card_writer_package' : 'worldbook_package', input: parsed };
+  }
+
+  if (parsed.spec === 'chara_card_v2' || parsed.data?.character_book) {
+    return { type: 'tavern_card_v2_character_book', input: { card: parsed } };
+  }
+
+  if (isObject(parsed.entries)) {
+    return { type: 'sillytavern_world_info', input: { worldInfo: parsed } };
+  }
+
+  if (Array.isArray(parsed.entries)) {
+    const hasWorldInfoFields = parsed.entries.some((entry) => entry?.key || entry?.keysecondary || entry?.comment || entry?.uid !== undefined);
+    return {
+      type: hasWorldInfoFields ? 'sillytavern_character_book' : 'worldbook',
+      input: hasWorldInfoFields ? { characterBook: parsed } : { worldbook: parsed },
+    };
+  }
+
+  throw new Error('Imported JSON does not look like a SillyTavern World Info, character_book, or worldbook card.');
+}
+
+function buildImportReport(worldbook, { fileName, sourceType, valid, errors, warnings }) {
+  const groups = uniqueStrings(worldbook.entries.map((entry) => entry.group || 'Core'));
+  const keywords = uniqueStrings(worldbook.entries.flatMap((entry) => entry.keys || []));
+  const enabledCount = worldbook.entries.filter((entry) => entry.enabled).length;
+
+  return {
+    fileName,
+    sourceType,
+    valid,
+    name: worldbook.name,
+    entryCount: worldbook.entries.length,
+    enabledCount,
+    disabledCount: worldbook.entries.length - enabledCount,
+    groupCount: groups.length,
+    groups,
+    keywordCount: keywords.length,
+    errors,
+    warnings,
+  };
 }
 
 function rawEntries(source = {}) {

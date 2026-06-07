@@ -130,6 +130,27 @@
 
       <section class="panel">
         <div class="panel-title">
+          <h2>外部世界书导入与整理</h2>
+          <span id="importState" class="state-pill">未导入</span>
+        </div>
+        <label class="file-drop">
+          <input id="worldbookFile" type="file" accept="application/json,.json">
+          <span>导入外部世界书 JSON</span>
+        </label>
+        <div id="importFeedback" class="feedback muted">支持 SillyTavern World Info JSON、角色卡内嵌 character_book、以及本工具导出的世界书包。</div>
+        <label>
+          AI 修改要求
+          <textarea id="worldbookRefineInstruction" rows="4" placeholder="例如：压缩重复设定，保留关键词；新增势力关系条目；把过长正文缩短到原来的一半。"></textarea>
+        </label>
+        <div class="button-row">
+          <button id="refineWorldbookBtn" type="button">AI 总结精简当前世界书</button>
+          <button id="modifyWorldbookBtn" type="button">AI 按要求修改/补充</button>
+        </div>
+        <div id="aiEditFeedback" class="feedback muted">导入或生成世界书后，可用 AI 整理；也可以在下方结构化细节编辑里手动新增、修改、删除条目。</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">
           <h2>Plan 大纲</h2>
           <span id="planState" class="state-pill">无大纲</span>
         </div>

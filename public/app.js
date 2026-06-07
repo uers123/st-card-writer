@@ -46,8 +46,11 @@ function bindEvents() {
   });
   $('#testConnectionBtn').addEventListener('click', testConnection);
   $('#presetFile').addEventListener('change', importPresetFile);
+  $('#worldbookFile').addEventListener('change', importWorldbookFile);
   $('#generatePlanBtn').addEventListener('click', generatePlan);
   $('#generateWorldbookBtn').addEventListener('click', generateWorldbookCard);
+  $('#refineWorldbookBtn').addEventListener('click', () => refineWorldbook('summarize'));
+  $('#modifyWorldbookBtn').addEventListener('click', () => refineWorldbook('modify'));
   $('#validateBtn').addEventListener('click', validateImport);
   $('#exportCardBtn').addEventListener('click', () => exportDownload('card'));
   $('#exportWorldBtn').addEventListener('click', () => exportDownload('world'));
@@ -137,6 +140,70 @@ async function importPresetFile(event) {
     $('#presetFeedback').textContent = error.message;
   } finally {
     event.target.value = '';
+  }
+}
+
+async function importWorldbookFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  setStatePill($('#importState'), '导入中', 'warn');
+  $('#importFeedback').textContent = '正在解析外部世界书 JSON...';
+  try {
+    const content = await file.text();
+    const result = await postJson('/api/import-worldbook', {
+      content,
+      fileName: file.name,
+      theme: $('#themeSelect').value,
+      regexTestText: $('#regexTestText').value,
+    });
+    applyPackage(result);
+    clearPlan();
+    setStatePill($('#importState'), result.validation?.valid ? '已导入' : '需检查', result.validation?.valid ? 'ok' : 'warn');
+    $('#importFeedback').textContent = formatImportReport(result.importReport);
+    showToast(`已导入 ${result.importReport?.entryCount || 0} 个世界书条目。`);
+    renderAll();
+  } catch (error) {
+    setStatePill($('#importState'), '导入失败', 'fail');
+    $('#importFeedback').textContent = error.message;
+  } finally {
+    event.target.value = '';
+  }
+}
+
+async function refineWorldbook(mode) {
+  if (!state.worldbook?.entries?.length) {
+    showToast('请先导入或生成世界书。');
+    return;
+  }
+
+  const buttonSelector = mode === 'modify' ? '#modifyWorldbookBtn' : '#refineWorldbookBtn';
+  const busyText = mode === 'modify' ? '修改中...' : '精简中...';
+  const doneText = mode === 'modify' ? 'AI 按要求修改/补充' : 'AI 总结精简当前世界书';
+  setBusy(buttonSelector, true, busyText);
+  setStatePill($('#importState'), 'AI整理中', 'warn');
+  $('#aiEditFeedback').textContent = mode === 'modify'
+    ? '正在让 AI 按要求修改或补充当前世界书。'
+    : '正在让 AI 总结、去重并精简当前世界书。';
+
+  try {
+    const result = await postJson('/api/refine-worldbook', {
+      ...buildAiPayload(),
+      ...buildPackagePayload(),
+      instruction: $('#worldbookRefineInstruction').value,
+      mode,
+      theme: $('#themeSelect').value,
+      regexTestText: $('#regexTestText').value,
+    });
+    applyPackage(result);
+    setStatePill($('#importState'), result.validation?.valid ? 'AI已整理' : '需检查', result.validation?.valid ? 'ok' : 'warn');
+    $('#aiEditFeedback').textContent = result.changeSummary || 'AI 已返回整理后的世界书，可继续手动修改。';
+    showToast(mode === 'modify' ? 'AI 修改完成。' : 'AI 精简完成。');
+    renderAll();
+  } catch (error) {
+    setStatePill($('#importState'), 'AI失败', 'fail');
+    $('#aiEditFeedback').textContent = error.message;
+  } finally {
+    setBusy(buttonSelector, false, doneText);
   }
 }
 
@@ -243,6 +310,7 @@ function applyPackage(pack) {
   state.regexScripts = Array.isArray(pack.regexScripts) ? pack.regexScripts : state.regexScripts || [];
   state.preview = pack.preview || state.preview;
   state.selectedEntryId = state.selectedEntryId ?? state.worldbook.entries?.[0]?.id ?? null;
+  state.exportCache = null;
   $('#regexScriptsJson').value = JSON.stringify(state.regexScripts, null, 2);
   syncEditorInputs();
 }
@@ -260,6 +328,24 @@ function renderAll() {
   renderEntryEditor();
   renderPreview();
   renderRegexPreview();
+}
+
+function clearPlan() {
+  state.plan = null;
+  $('#planJson').value = '';
+}
+
+function formatImportReport(report = {}) {
+  const lines = [
+    `文件：${report.fileName || '(未命名)'}`,
+    `识别类型：${report.sourceType || 'unknown'}`,
+    `条目：${report.entryCount || 0}，启用：${report.enabledCount || 0}，禁用：${report.disabledCount || 0}`,
+    `分组：${report.groupCount || 0}，关键词：${report.keywordCount || 0}`,
+  ];
+  if (report.groups?.length) lines.push(`分组名：${report.groups.join(', ')}`);
+  if (report.warnings?.length) lines.push(`警告：${report.warnings.join('；')}`);
+  if (report.errors?.length) lines.push(`错误：${report.errors.join('；')}`);
+  return lines.join('\n');
 }
 
 function renderPresetFeedback() {

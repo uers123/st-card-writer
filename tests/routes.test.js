@@ -38,6 +38,31 @@ test('api router exposes health and worldbook export endpoints', async (t) => {
   assert.equal(exported.cardFileName, 'route-smoke-world.worldcard.json');
   assert.equal(exported.card.data.character_book.entries.length, 1);
   assert.equal(Object.keys(exported.worldInfo.entries).length, 1);
+
+  const importResponse = await fetch(`${baseUrl}/api/import-worldbook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fileName: 'route-import.worldinfo.json',
+      content: JSON.stringify({
+        name: 'Route Import',
+        entries: {
+          3: {
+            uid: 3,
+            key: ['route import'],
+            comment: 'Route Import Entry',
+            content: 'Imported through the route.',
+          },
+        },
+      }),
+    }),
+  });
+  const imported = await importResponse.json();
+
+  assert.equal(importResponse.ok, true);
+  assert.equal(imported.importReport.sourceType, 'sillytavern_world_info');
+  assert.equal(imported.worldbook.entries[0].title, 'Route Import Entry');
+  assert.equal(imported.preview.metrics.entries, 1);
 });
 
 function startServer() {
