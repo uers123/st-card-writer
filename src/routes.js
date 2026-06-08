@@ -76,6 +76,8 @@ export function createApiRouter() {
       content: request.body?.content,
       json: request.body?.json || request.body?.worldbook || request.body,
       fileName: request.body?.fileName,
+      mode: request.body?.mode,
+      targetWorldbook: request.body?.targetWorldbook,
     });
     response.json({
       ...result,

@@ -6,6 +6,7 @@ npm-debug.log*
 *.local
 .chrome-profile/
 .chrome-profile-check/
+.chrome-profile-check-*/
 *.png
 *.card.json
 regex-*.json

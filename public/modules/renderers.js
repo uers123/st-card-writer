@@ -95,30 +95,78 @@ export function renderEntryEditor(entry, onDelete) {
 
 export function renderPreview(preview) {
   if (!preview) {
-    $('#renderPreview').innerHTML = '<div class="feedback muted">生成或编辑后会显示预览。</div>';
+    $('#renderPreview').innerHTML = '<div class="feedback muted">生成、导入或编辑后，会显示导入 SillyTavern 后的扩展渲染反馈。</div>';
     return;
   }
 
   const header = preview.header || {};
   const accent = header.accentColor || '#24b47e';
+  const entries = Array.isArray(preview.entries) ? preview.entries : [];
+  const groups = Array.isArray(preview.groups) ? preview.groups : [];
+  const triggerState = computePreviewTriggerState(entries, preview.regexPreview?.output || '');
+  const groupNames = ['全部', ...groups.map((group) => group.name)];
   $('#renderPreview').innerHTML = `
-    <article class="world-card" style="--accent:${escapeAttr(accent)}">
-      <header class="world-hero">
-        <div class="world-cover">${renderImageOrText(header.coverImageUrl, initials(header.name || 'WB'))}</div>
+    <article class="st-preview-shell" style="--accent:${escapeAttr(accent)}">
+      <header class="st-preview-header">
         <div>
-          <h3>${escapeHtml(header.name || '未命名世界书')}</h3>
+          <h3>世界书卡视图</h3>
+          <p>导入 SillyTavern 后，由第三方扩展读取 <code>data.character_book</code> 和 <code>extensions.st_card_writer</code> 渲染。</p>
+        </div>
+        <span class="state-pill ok">扩展可识别</span>
+      </header>
+
+      <section class="st-preview-hero">
+        <div class="st-preview-cover">${renderImageOrText(header.coverImageUrl, initials(header.name || 'WB'))}</div>
+        <div>
+          <h4>${escapeHtml(header.name || '未命名世界书')}</h4>
           <p>${escapeHtml(header.subtitle || '')}</p>
+          <div class="st-preview-stats">
+            <span>${preview.metrics?.entries || 0} 条目</span>
+            <span>${preview.metrics?.groups || 0} 分组</span>
+            <span>${triggerState.triggered.length} 已触发</span>
+            <span>${triggerState.recent.length} 最近触发</span>
+            <span>${preview.metrics?.estimatedTokens || 0} tokens</span>
+          </div>
           <div class="tag-row">${(preview.tags || []).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
         </div>
-      </header>
-      <div class="stat-row">
-        <span class="stat">核心完整度 ${preview.completion?.core || 0}%</span>
-        <span class="stat">条目完整度 ${preview.completion?.entries || 0}%</span>
-        <span class="stat">${preview.metrics?.entries || 0} 条目</span>
-        <span class="stat">${preview.metrics?.estimatedTokens || 0} tokens 估算</span>
-      </div>
-      ${renderPreviewSections(preview.sections || [])}
-      ${renderPreviewGroups(preview.groups || [])}
+      </section>
+
+      <section class="st-preview-toolbar">
+        <input type="search" value="" placeholder="SillyTavern 内可搜索标题、关键词、正文" disabled>
+        <div class="st-preview-groups">
+          ${groupNames.map((group, index) => `<button type="button" class="${index === 0 ? 'active' : ''}" disabled>${escapeHtml(group)}</button>`).join('')}
+        </div>
+      </section>
+
+      <section class="st-preview-recent">
+        <h4>最近触发</h4>
+        ${renderRecentTriggers(triggerState.recent)}
+      </section>
+
+      <section class="st-preview-table-wrap">
+        <table class="st-preview-table">
+          <thead>
+            <tr>
+              <th>条目</th>
+              <th>关键词</th>
+              <th>分组</th>
+              <th>状态</th>
+              <th>出现</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${entries.map((entry) => renderStPreviewRow(entry, triggerState)).join('')}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="st-preview-card-grid">
+        ${entries.length ? entries.map((entry) => renderStPreviewCard(entry, triggerState)).join('') : '<div class="feedback muted">暂无世界书条目。</div>'}
+      </section>
+
+      <section class="st-preview-import-fields">
+        ${renderPreviewSections(preview.sections || [])}
+      </section>
     </article>
   `;
 }
@@ -126,6 +174,79 @@ export function renderPreview(preview) {
 export function renderRegexPreview(preview) {
   const output = preview?.regexPreview?.output || '';
   $('#regexPreviewOutput').textContent = output || '暂无正则预览。';
+}
+
+function renderRecentTriggers(recent) {
+  if (!recent.length) {
+    return '<p class="muted">在“检查、正则与导出”界面输入测试聊天文本后，这里会根据关键词显示最近触发。</p>';
+  }
+
+  return recent.map((item) => `
+    <div class="st-preview-recent-item">
+      <strong>${escapeHtml(item.entry.title)}</strong>
+      <span>${escapeHtml(item.keywords.join(', '))}</span>
+    </div>
+  `).join('');
+}
+
+function renderStPreviewRow(entry, triggerState) {
+  const stat = triggerState.byId.get(entry.id) || { count: 0, recent: false };
+  return `
+    <tr class="${stat.recent ? 'recent' : ''}">
+      <td>${escapeHtml(entry.title)}</td>
+      <td>${(entry.keys || []).map((key) => `<span class="keyword">${escapeHtml(key)}</span>`).join('')}</td>
+      <td>${escapeHtml(entry.group || 'Core')}</td>
+      <td>${entry.enabled ? '启用' : '禁用'}${stat.recent ? ' · 最近触发' : ''}</td>
+      <td>${stat.count}</td>
+    </tr>
+  `;
+}
+
+function renderStPreviewCard(entry, triggerState) {
+  const stat = triggerState.byId.get(entry.id) || { count: 0, recent: false };
+  return `
+    <article class="st-preview-entry ${entry.enabled ? '' : 'disabled-entry'} ${stat.recent ? 'recent' : ''}" style="--entry-color:${escapeAttr(entry.color || '#24b47e')}">
+      <div class="entry-thumb">${renderImageOrText(entry.imageUrl, entry.placeholder || initials(entry.title))}</div>
+      <div class="entry-meta">
+        <h4>${escapeHtml(entry.title)}</h4>
+        <p>${escapeHtml(entry.content || '无正文')}</p>
+        <div class="keyword-row">${(entry.keys || []).map((key) => `<span class="keyword">${escapeHtml(key)}</span>`).join('')}</div>
+        <small>${escapeHtml(entry.group || 'Core')} · ${entry.enabled ? '启用' : '禁用'} · 出现 ${stat.count}</small>
+      </div>
+    </article>
+  `;
+}
+
+function computePreviewTriggerState(entries, sourceText) {
+  const text = String(sourceText || '').toLowerCase();
+  const recentText = text.split(/\n+/).slice(-8).join('\n');
+  const byId = new Map();
+  const triggered = [];
+  const recent = [];
+
+  for (const entry of entries) {
+    const keywords = [...(entry.keys || []), ...(entry.secondaryKeys || [])].filter(Boolean);
+    const matched = keywords.filter((key) => text.includes(String(key).toLowerCase()));
+    const recentMatched = keywords.filter((key) => recentText.includes(String(key).toLowerCase()));
+    const count = keywords.reduce((sum, key) => sum + countOccurrences(text, String(key).toLowerCase()), 0);
+    const stat = { count, recent: recentMatched.length > 0, keywords: matched };
+    byId.set(entry.id, stat);
+    if (matched.length) triggered.push({ entry, keywords: matched, count });
+    if (recentMatched.length) recent.push({ entry, keywords: recentMatched, count });
+  }
+
+  return { byId, triggered, recent };
+}
+
+function countOccurrences(haystack, needle) {
+  if (!needle) return 0;
+  let count = 0;
+  let index = 0;
+  while ((index = haystack.indexOf(needle, index)) !== -1) {
+    count += 1;
+    index += Math.max(needle.length, 1);
+  }
+  return count;
 }
 
 export function renderValidation(result) {

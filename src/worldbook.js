@@ -26,6 +26,15 @@ const POSITION_LABELS = Object.freeze({
 });
 
 const DEFAULT_COLORS = ['#58a6ff', '#8b5cf6', '#16a34a', '#f97316', '#dc2626', '#0891b2'];
+const DEEP_ROLE_DEFAULTS = Object.freeze({
+  enabled: true,
+  version: '1.0.0',
+  injectionKey: 'st-card-writer-deep-role',
+  defaultDepth: 4,
+  defaultRole: 'system',
+  antiCompliance: true,
+  autoSummarize: true,
+});
 
 export function createEmptyWorldbook(overrides = {}) {
   return normalizeWorldbook({
@@ -64,6 +73,8 @@ export function normalizeWorldbook(input = {}) {
     tokenBudget: number(source.token_budget ?? source.tokenBudget, 2048),
     recursiveScanning: Boolean(source.recursive_scanning ?? source.recursiveScanning),
     render: normalizeRenderConfig(source.render || source.visual || source.extensions?.st_card_writer?.render),
+    storyAugment: normalizeStoryAugmentMetadata(source.storyAugment || source.story_augment || source.extensions?.st_card_writer?.story_augment),
+    deepRole: normalizeDeepRoleMetadata(source.deepRole || source.deep_role || source.extensions?.st_card_writer?.deep_role),
     entries,
   };
 }
@@ -109,6 +120,7 @@ export function normalizeWorldbookEntry(entry = {}, index = 0) {
     color: normalizeColor(entry.color || visualSource.color || stMeta.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length]),
     visualType: text(entry.visualType || visualSource.type || stMeta.visualType || 'panel'),
     visualNote: text(entry.visualNote || visualSource.note || stMeta.visualNote),
+    source: normalizeEntrySource(entry.source || stMeta.source),
   };
 }
 
@@ -134,10 +146,21 @@ export function normalizeWorldbookPackage(input = {}) {
   };
 }
 
-export function importWorldbookJson({ content, json, fileName = 'worldbook.json' } = {}) {
+export function importWorldbookJson({ content, json, fileName = 'worldbook.json', mode = 'replace', targetWorldbook } = {}) {
   const parsed = parseWorldbookImportInput(content ?? json);
   const source = selectImportSource(parsed);
-  const pack = normalizeWorldbookPackage(source.input);
+  const importedPack = normalizeWorldbookPackage(source.input);
+  const pack = mode === 'story-augment'
+    ? normalizeWorldbookPackage({
+      worldbook: mergeStoryAugmentWorldbook({
+        targetWorldbook,
+        importedWorldbook: importedPack.worldbook,
+        fileName,
+        sourceType: source.type,
+      }),
+      regexScripts: importedPack.regexScripts,
+    })
+    : importedPack;
   const validation = validateWorldbook(pack);
 
   return {
@@ -146,6 +169,10 @@ export function importWorldbookJson({ content, json, fileName = 'worldbook.json'
     importReport: buildImportReport(pack.worldbook, {
       fileName,
       sourceType: source.type,
+      mode,
+      previousEntryCount: mode === 'story-augment' ? targetEntryCount(targetWorldbook) : 0,
+      importedEntryCount: importedPack.worldbook.entries.length,
+      appendedEntryCount: mode === 'story-augment' ? importedPack.worldbook.entries.length : 0,
       valid: validation.valid,
       errors: validation.errors,
       warnings: validation.warnings,
@@ -398,7 +425,7 @@ function selectImportSource(parsed) {
   throw new Error('Imported JSON does not look like a SillyTavern World Info, character_book, or worldbook card.');
 }
 
-function buildImportReport(worldbook, { fileName, sourceType, valid, errors, warnings }) {
+function buildImportReport(worldbook, { fileName, sourceType, mode = 'replace', previousEntryCount = 0, importedEntryCount = worldbook.entries.length, appendedEntryCount = 0, valid, errors, warnings }) {
   const groups = uniqueStrings(worldbook.entries.map((entry) => entry.group || 'Core'));
   const keywords = uniqueStrings(worldbook.entries.flatMap((entry) => entry.keys || []));
   const enabledCount = worldbook.entries.filter((entry) => entry.enabled).length;
@@ -406,9 +433,13 @@ function buildImportReport(worldbook, { fileName, sourceType, valid, errors, war
   return {
     fileName,
     sourceType,
+    mode,
     valid,
     name: worldbook.name,
     entryCount: worldbook.entries.length,
+    previousEntryCount,
+    importedEntryCount,
+    appendedEntryCount,
     enabledCount,
     disabledCount: worldbook.entries.length - enabledCount,
     groupCount: groups.length,
@@ -507,6 +538,7 @@ function exportEntryExtensions(entry, index) {
     st_card_writer: {
       title: entry.title,
       group: entry.group,
+      source: entry.source || null,
       imageUrl: entry.imageUrl,
       placeholder: entry.placeholder,
       color: entry.color,
@@ -535,6 +567,126 @@ function buildStCardWriterMetadata(worldbook) {
       coverImageUrl: worldbook.render.coverImageUrl,
       layout: 'interactive-worldbook',
     },
+    story_augment: normalizeStoryAugmentMetadata(worldbook.storyAugment),
+    deep_role: normalizeDeepRoleMetadata(worldbook.deepRole),
+  };
+}
+
+function mergeStoryAugmentWorldbook({ targetWorldbook, importedWorldbook, fileName, sourceType }) {
+  const imported = normalizeWorldbook(importedWorldbook);
+  const hasTarget = hasMeaningfulWorldbook(targetWorldbook);
+  const target = hasTarget
+    ? normalizeWorldbook(targetWorldbook)
+    : normalizeWorldbook({
+      name: imported.name,
+      description: imported.description,
+      summary: imported.summary,
+      tags: imported.tags,
+      entries: [],
+    });
+  const importedAt = new Date().toISOString();
+  const nextId = nextEntryId(target.entries);
+  const sourceRecord = {
+    fileName: text(fileName || 'worldbook.json'),
+    sourceType: text(sourceType || 'unknown'),
+    importedAt,
+    entryCount: imported.entries.length,
+  };
+  const appendedEntries = imported.entries.map((entry, index) => ({
+    ...entry,
+    id: nextId + index,
+    source: {
+      ...sourceRecord,
+      originalId: entry.id,
+      originalTitle: entry.title,
+    },
+  }));
+  const storyAugment = normalizeStoryAugmentMetadata(target.storyAugment);
+
+  return {
+    ...target,
+    name: target.name?.trim() ? target.name : imported.name,
+    description: target.description?.trim() ? target.description : imported.description,
+    summary: target.summary?.trim() ? target.summary : imported.summary,
+    tags: uniqueStrings([...(target.tags || []), ...(imported.tags || []), 'story-augment']),
+    entries: [...target.entries, ...appendedEntries],
+    storyAugment: {
+      enabled: true,
+      importedEntryCount: storyAugment.importedEntryCount + imported.entries.length,
+      sources: [...storyAugment.sources, sourceRecord],
+    },
+    deepRole: normalizeDeepRoleMetadata({
+      ...target.deepRole,
+      enabled: true,
+      antiCompliance: true,
+      autoSummarize: true,
+    }),
+  };
+}
+
+function hasMeaningfulWorldbook(value) {
+  if (!isObject(value)) return false;
+  const source = extractWorldbookSource(value);
+  return rawEntries(source).length > 0
+    || Boolean(text(source.name || source.title || value?.data?.name || value?.name).trim())
+    || Boolean(text(source.description || source.summary || value?.data?.description || value?.description).trim());
+}
+
+function targetEntryCount(value) {
+  if (!hasMeaningfulWorldbook(value)) return 0;
+  return normalizeWorldbook(value).entries.length;
+}
+
+function nextEntryId(entries) {
+  return entries.reduce((max, entry) => Math.max(max, number(entry.id, -1)), -1) + 1;
+}
+
+function normalizeStoryAugmentMetadata(input = {}) {
+  const source = isObject(input) ? input : {};
+  const sources = Array.isArray(source.sources)
+    ? source.sources.map(normalizeStoryAugmentSource).filter(Boolean)
+    : [];
+  return {
+    enabled: source.enabled !== false,
+    importedEntryCount: number(source.importedEntryCount ?? source.imported_entry_count, 0),
+    sources,
+  };
+}
+
+function normalizeStoryAugmentSource(input = {}) {
+  if (!isObject(input)) return null;
+  return {
+    fileName: text(input.fileName || input.file_name || 'worldbook.json'),
+    sourceType: text(input.sourceType || input.source_type || 'unknown'),
+    importedAt: text(input.importedAt || input.imported_at),
+    entryCount: number(input.entryCount || input.entry_count, 0),
+  };
+}
+
+function normalizeDeepRoleMetadata(input = {}) {
+  const source = isObject(input) ? input : {};
+  return {
+    ...DEEP_ROLE_DEFAULTS,
+    ...source,
+    enabled: source.enabled !== false,
+    defaultDepth: number(source.defaultDepth ?? source.default_depth, DEEP_ROLE_DEFAULTS.defaultDepth),
+    antiCompliance: Boolean(source.antiCompliance ?? source.anti_compliance ?? DEEP_ROLE_DEFAULTS.antiCompliance),
+    autoSummarize: Boolean(source.autoSummarize ?? source.auto_summarize ?? DEEP_ROLE_DEFAULTS.autoSummarize),
+  };
+}
+
+function normalizeEntrySource(input = {}) {
+  if (!isObject(input)) return null;
+  const fileName = text(input.fileName || input.file_name);
+  const sourceType = text(input.sourceType || input.source_type);
+  const importedAt = text(input.importedAt || input.imported_at);
+  if (!fileName && !sourceType && !importedAt && input.originalId === undefined && input.original_id === undefined) return null;
+  return {
+    fileName,
+    sourceType,
+    importedAt,
+    originalId: input.originalId ?? input.original_id ?? null,
+    originalTitle: text(input.originalTitle || input.original_title),
   };
 }
 

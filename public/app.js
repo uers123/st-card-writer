@@ -26,6 +26,7 @@ async function init() {
   loadApiSettings();
   await loadLocalConfigDefaults();
   bindEvents();
+  showScreen(screenFromHash() || 'home');
   try {
     const pack = await getJson('/api/empty-worldbook-card');
     applyPackage(pack);
@@ -37,6 +38,10 @@ async function init() {
 }
 
 function bindEvents() {
+  document.querySelectorAll('[data-screen-target]').forEach((button) => {
+    button.addEventListener('click', () => showScreen(button.dataset.screenTarget || 'home'));
+  });
+  window.addEventListener('hashchange', () => showScreen(screenFromHash() || 'home', { updateHash: false }));
   ['baseUrl', 'model', 'temperature', 'maxTokens'].forEach((id) => {
     $(`#${id}`).addEventListener('input', saveApiSettings);
   });
@@ -70,6 +75,23 @@ function bindEvents() {
   $('#entryList').addEventListener('click', onEntryListClick);
   $('#entryEditor').addEventListener('input', onEntryEditorInput);
   $('#entryEditor').addEventListener('change', onEntryEditorInput);
+}
+
+function showScreen(name, { updateHash = true } = {}) {
+  const target = document.querySelector(`[data-screen="${name}"]`) ? name : 'home';
+  document.querySelectorAll('[data-screen]').forEach((screen) => {
+    screen.hidden = screen.dataset.screen !== target;
+  });
+  document.querySelectorAll('[data-screen-target]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.screenTarget === target);
+  });
+  document.body.dataset.currentScreen = target;
+  if (updateHash) history.replaceState(null, '', `#${target}`);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function screenFromHash() {
+  return window.location.hash.replace(/^#/, '').trim();
 }
 
 function loadApiSettings() {
@@ -153,6 +175,8 @@ async function importWorldbookFile(event) {
     const result = await postJson('/api/import-worldbook', {
       content,
       fileName: file.name,
+      mode: 'story-augment',
+      targetWorldbook: state.worldbook || emptyWorldbook(),
       theme: $('#themeSelect').value,
       regexTestText: $('#regexTestText').value,
     });
@@ -162,6 +186,7 @@ async function importWorldbookFile(event) {
     $('#importFeedback').textContent = formatImportReport(result.importReport);
     showToast(`已导入 ${result.importReport?.entryCount || 0} 个世界书条目。`);
     renderAll();
+    showScreen('editor');
   } catch (error) {
     setStatePill($('#importState'), '导入失败', 'fail');
     $('#importFeedback').textContent = error.message;
@@ -199,6 +224,7 @@ async function refineWorldbook(mode) {
     $('#aiEditFeedback').textContent = result.changeSummary || 'AI 已返回整理后的世界书，可继续手动修改。';
     showToast(mode === 'modify' ? 'AI 修改完成。' : 'AI 精简完成。');
     renderAll();
+    showScreen('preview');
   } catch (error) {
     setStatePill($('#importState'), 'AI失败', 'fail');
     $('#aiEditFeedback').textContent = error.message;
@@ -219,6 +245,7 @@ async function generatePlan() {
     setStatePill($('#workflowState'), '计划完成', 'ok');
     $('#workflowFeedback').textContent = '计划已生成。可以微调 JSON，然后点击“根据计划生成世界书卡”。';
     renderPlanOutline();
+    showScreen('plan');
   } catch (error) {
     setStatePill($('#workflowState'), '计划失败', 'fail');
     $('#workflowFeedback').textContent = error.message;
@@ -250,6 +277,7 @@ async function generateWorldbookCard() {
     setStatePill($('#workflowState'), '成卡完成', 'ok');
     $('#workflowFeedback').textContent = '世界书卡已生成。右侧可预览，必要时在结构化编辑区少量修改。';
     renderAll();
+    showScreen('preview');
   } catch (error) {
     setStatePill($('#workflowState'), '成卡失败', 'fail');
     $('#workflowFeedback').textContent = error.message;
@@ -338,8 +366,9 @@ function clearPlan() {
 function formatImportReport(report = {}) {
   const lines = [
     `文件：${report.fileName || '(未命名)'}`,
-    `识别类型：${report.sourceType || 'unknown'}`,
-    `条目：${report.entryCount || 0}，启用：${report.enabledCount || 0}，禁用：${report.disabledCount || 0}`,
+    `识别类型：${report.sourceType || 'unknown'} / ${report.mode || 'replace'}`,
+    `故事素材：原有 ${report.previousEntryCount || 0} + 新增 ${report.appendedEntryCount || report.importedEntryCount || 0} = 当前 ${report.entryCount || 0}`,
+    `启用：${report.enabledCount || 0}，禁用：${report.disabledCount || 0}`,
     `分组：${report.groupCount || 0}，关键词：${report.keywordCount || 0}`,
   ];
   if (report.groups?.length) lines.push(`分组名：${report.groups.join(', ')}`);

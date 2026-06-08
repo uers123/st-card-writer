@@ -44,9 +44,10 @@ The browser only receives safe metadata from `/api/local-config`: base URL, mode
 
 - API configuration: set OpenAI-compatible `base_url`, `api_key`, `model`, `temperature`, and `max_tokens`; test the connection with `/models` or a lightweight chat request.
 - Prompt preset import: import one JSON preset and get file name, recognized type, validity, key field count, and errors.
-- Plan mode: AI first writes a worldbook outline, then generates the full worldbook card from the confirmed plan.
-- Compact editor: manually adjust worldbook name, tags, summary, entries, keywords, positions, priority, and visual metadata.
-- Render preview: shows grouped entries, keywords, completeness, token estimates, section collapse, image placeholders, and regex output.
+- AI worldbook workflow: write the requirement, let AI produce a plan, edit or delete plan items, then generate the full worldbook card.
+- External worldbook import: import SillyTavern World Info or embedded `character_book` JSON as story material. The import appends entries to the current worldbook instead of replacing existing story material.
+- Compact editor: manually adjust worldbook name, tags, summary, entries, keywords, positions, priority, source metadata, and visual metadata.
+- Render preview: simulates the SillyTavern extension panel with grouped entries, keyword triggers, recent trigger state, image placeholders, and regex output.
 
 ## Exports
 
@@ -71,6 +72,14 @@ D:\github-neirong\SillyTavern\SillyTavern-release\public\scripts\extensions\thir
 ```
 
 After restarting SillyTavern, open the extensions wand menu or character management menu and select the worldbook card viewer. The extension only activates for cards with `data.extensions.st_card_writer.kind = "worldbook-card"`.
+
+The installed extension provides:
+
+- Worldbook table and grouped card view for the current character.
+- Recent keyword trigger tracking from chat messages.
+- Source labels for externally imported story material.
+- Hidden deep-role prompt injection before generation, using `generate_interceptor`.
+- Optional AI state summary inside SillyTavern. It is disabled by default; use the panel button or enable auto summary if you want SillyTavern to spend API calls on summarization.
 
 ## Project Structure
 

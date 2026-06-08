@@ -125,6 +125,50 @@ test('embedded TavernCard character_book imports as a worldbook', () => {
   assert.equal(result.worldInfo.entries['2'].content, 'Embedded content.');
 });
 
+test('story augment import appends external lore without replacing current story material', () => {
+  const result = importWorldbookJson({
+    mode: 'story-augment',
+    fileName: 'outside.worldinfo.json',
+    targetWorldbook: {
+      name: 'Current Story',
+      description: 'Existing story material.',
+      entries: [{
+        id: 10,
+        title: 'Existing Ally',
+        keys: ['ally'],
+        content: 'The ally refuses to betray old promises.',
+        group: 'Cast',
+      }],
+    },
+    content: JSON.stringify({
+      name: 'Outside Book',
+      entries: {
+        3: {
+          uid: 3,
+          key: ['outside gate'],
+          comment: 'Outside Gate',
+          content: 'The outside gate opens at dawn.',
+          group: 'Locations',
+        },
+      },
+    }),
+  });
+
+  assert.equal(result.importReport.mode, 'story-augment');
+  assert.equal(result.importReport.previousEntryCount, 1);
+  assert.equal(result.importReport.importedEntryCount, 1);
+  assert.equal(result.importReport.appendedEntryCount, 1);
+  assert.equal(result.worldbook.name, 'Current Story');
+  assert.deepEqual(result.worldbook.entries.map((entry) => entry.title), ['Existing Ally', 'Outside Gate']);
+  assert.equal(result.worldbook.entries[1].id, 11);
+  assert.equal(result.worldbook.entries[1].source.fileName, 'outside.worldinfo.json');
+  assert.equal(result.worldbook.entries[1].source.originalId, 3);
+  assert.equal(result.card.data.extensions.st_card_writer.story_augment.importedEntryCount, 1);
+  assert.equal(result.card.data.extensions.st_card_writer.deep_role.enabled, true);
+  assert.equal(result.card.data.character_book.entries[1].extensions.st_card_writer.source.originalId, 3);
+  assert.equal(validateWorldbook(result).valid, true);
+});
+
 test('worldbook preview does not mutate card export data', () => {
   const pack = normalizeWorldbookPackage({
     worldbook: {

@@ -63,6 +63,44 @@ test('api router exposes health and worldbook export endpoints', async (t) => {
   assert.equal(imported.importReport.sourceType, 'sillytavern_world_info');
   assert.equal(imported.worldbook.entries[0].title, 'Route Import Entry');
   assert.equal(imported.preview.metrics.entries, 1);
+
+  const augmentResponse = await fetch(`${baseUrl}/api/import-worldbook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mode: 'story-augment',
+      fileName: 'route-augment.worldinfo.json',
+      targetWorldbook: {
+        name: 'Route Story',
+        entries: [{
+          id: 8,
+          title: 'Route Existing',
+          keys: ['existing'],
+          content: 'Existing route story material.',
+        }],
+      },
+      content: JSON.stringify({
+        name: 'Route Augment',
+        entries: {
+          1: {
+            uid: 1,
+            key: ['augment'],
+            comment: 'Route Augment Entry',
+            content: 'Augmented route story material.',
+          },
+        },
+      }),
+    }),
+  });
+  const augmented = await augmentResponse.json();
+
+  assert.equal(augmentResponse.ok, true);
+  assert.equal(augmented.importReport.mode, 'story-augment');
+  assert.equal(augmented.importReport.previousEntryCount, 1);
+  assert.equal(augmented.importReport.appendedEntryCount, 1);
+  assert.equal(augmented.worldbook.entries.length, 2);
+  assert.equal(augmented.worldbook.entries[1].id, 9);
+  assert.equal(augmented.card.data.extensions.st_card_writer.deep_role.enabled, true);
 });
 
 function startServer() {
