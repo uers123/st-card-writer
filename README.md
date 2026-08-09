@@ -67,7 +67,7 @@ sillytavern-extension\st-card-writer-viewer
 It is also installed locally at:
 
 ```text
-D:\github-neirong\SillyTavern\SillyTavern-release\public\scripts\extensions\third-party\st-card-writer-viewer
+<你的 SillyTavern 安装目录>\public\scripts\extensions\third-party\st-card-writer-viewer
 ```
 
 After restarting SillyTavern, open the extensions wand menu or character management menu and select the worldbook card viewer. The extension only activates for cards with `data.extensions.st_card_writer.kind = "worldbook-card"`.
