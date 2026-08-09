@@ -13,7 +13,7 @@ Start.bat
 Or start from PowerShell:
 
 ```powershell
-cd D:\github-neirong\SillyTavern\st-card-writer
+cd 本项目目录（st-card-writer）
 npm install
 npm start
 ```
