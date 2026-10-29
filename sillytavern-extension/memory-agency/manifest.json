@@ -1,0 +1,13 @@
+{
+  "display_name": "Memory & Autonomy Engine",
+  "loading_order": 80,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "generate_interceptor": "maeGenerationInterceptor",
+  "author": "uers123",
+  "version": "1.0.0",
+  "homePage": "https://github.com/uers123/st-card-writer",
+  "minimum_client_version": "1.12.13"
+}

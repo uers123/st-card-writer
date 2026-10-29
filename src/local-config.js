@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const LOCAL_ENV_FILE = '.env.local';
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const LOCAL_ENV_FILE = path.join(PROJECT_ROOT, '.env.local');
 let cachedConfig = null;
 
 export function getLocalApiDefaults() {

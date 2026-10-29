@@ -66,7 +66,7 @@ if ($target.Running) {
     exit 0
 }
 
-Write-Host "Starting SillyTavern card writer on port $Port..."
+Write-Host "Starting Memory & Autonomy Engine on port $Port..."
 $escapedRoot = $Root.Replace("'", "''")
 $serverCommand = "Set-Location -LiteralPath '$escapedRoot'; `$env:PORT='$Port'; npm start"
 Start-Process powershell.exe -ArgumentList @('-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', $serverCommand)

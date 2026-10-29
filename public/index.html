@@ -1,350 +1,60 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SillyTavern 世界书卡写卡机器</title>
-  <link rel="stylesheet" href="./styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAE 本地记忆与自主叙事引擎</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/mae.css">
 </head>
-<body data-theme="dark">
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">WB</span>
-      <div>
-        <h1>世界书卡写卡机器</h1>
-        <p>目录式工作台：先选择功能，再进入对应界面处理世界书卡。</p>
-      </div>
+<body>
+  <header class="mae-topbar">
+    <div>
+      <button id="directoryToggle" class="mae-icon-button" type="button" aria-expanded="false" aria-controls="maeDirectory" title="打开功能目录">☰</button>
+      <p class="mae-eyebrow">MEMORY &amp; AUTONOMY ENGINE</p>
+      <h1>本地记忆与自主叙事引擎</h1>
+      <p class="mae-subtitle">把聊天记录变成可追溯的实体、事实和世界时间，让 NPC 在视野外也继续生活。</p>
     </div>
-    <nav class="top-actions" aria-label="主导航">
-      <button id="homeButton" type="button" data-screen-target="home">功能目录</button>
-      <button type="button" data-screen-target="preview">SillyTavern 渲染反馈</button>
-      <button type="button" data-screen-target="export">检查与导出</button>
-    </nav>
+    <div class="mae-top-actions"><span id="healthPill" class="state-pill">未连接</span><a class="button secondary" href="/api/mae/export?chatId=default" target="_blank" rel="noreferrer">导出快照</a></div>
   </header>
-
-  <main class="app-shell">
-    <section id="homeScreen" class="directory-screen" data-screen="home">
-      <div class="directory-head">
-        <span class="state-pill ok">目录</span>
-        <h2>选择要处理的大功能</h2>
-        <p>每个入口都是一个独立功能界面。AI 负责生成与整理，人负责判断、微调和导出。</p>
-      </div>
-
-      <div class="directory-grid">
-        <button type="button" class="directory-card" data-screen-target="config">
-          <span>01</span>
-          <strong>API 与预设配置</strong>
-          <small>配置 OpenAI 兼容接口，导入提示词预设，测试模型连接。</small>
-        </button>
-        <button type="button" class="directory-card" data-screen-target="ai">
-          <span>02</span>
-          <strong>AI 世界书生成</strong>
-          <small>输入需求，生成 Plan 大纲，再扩写为可导入世界书卡。</small>
-        </button>
-        <button type="button" class="directory-card" data-screen-target="import">
-          <span>03</span>
-          <strong>外部世界书导入与整理</strong>
-          <small>导入 SillyTavern World Info 或内嵌 character_book，用 AI 总结精简或补充修改。</small>
-        </button>
-        <button type="button" class="directory-card" data-screen-target="plan">
-          <span>04</span>
-          <strong>Plan 大纲删改</strong>
-          <small>人工删除、改写 AI 生成的大纲条目，再交给 AI 成卡。</small>
-        </button>
-        <button type="button" class="directory-card" data-screen-target="editor">
-          <span>05</span>
-          <strong>结构化细节编辑</strong>
-          <small>手动新增、修改、删除世界书条目，调整关键词、位置、优先级和正文。</small>
-        </button>
-        <button type="button" class="directory-card" data-screen-target="preview">
-          <span>06</span>
-          <strong>SillyTavern 渲染反馈</strong>
-          <small>模拟导入角色卡后，第三方扩展在 SillyTavern 内看到的互动面板。</small>
-        </button>
-        <button type="button" class="directory-card" data-screen-target="export">
-          <span>07</span>
-          <strong>检查、正则与导出</strong>
-          <small>检查能否导入，预览正则效果，下载角色卡、世界书和 Regex JSON。</small>
-        </button>
+  <main class="mae-shell">
+    <section class="mae-cover" aria-labelledby="coverTitle">
+      <div class="mae-cover-mark" aria-hidden="true">MAE</div>
+      <div class="mae-cover-copy">
+        <p class="mae-kicker">WORLD STATE COVER</p>
+        <h2 id="coverTitle">世界状态目录</h2>
+        <p>从封面进入会话、NPC、物品、世界书和高级机制。点击左上角图标可随时展开顶部功能目录。</p>
+        <div class="mae-cover-links" aria-label="封面功能链接">
+          <button type="button" data-view="dashboard">会话控制台</button>
+          <button type="button" data-view="memory">NPC / 物品</button>
+          <button type="button" data-view="worldbook">世界书</button>
+          <button type="button" data-view="advanced">高级机制</button>
+        </div>
       </div>
     </section>
-
-    <section class="feature-screen" data-screen="config" hidden>
-      <div class="screen-title">
-        <button type="button" data-screen-target="home">返回目录</button>
-        <div>
-          <h2>API 与预设配置</h2>
-          <p>生成、整理、改写都使用这里的 OpenAI 兼容接口配置。</p>
-        </div>
+    <nav id="maeDirectory" class="mae-directory" aria-label="功能目录" hidden>
+      <button class="directory-card active" data-view="dashboard"><span>01</span><strong>会话控制台</strong><small>处理回合、查看世界状态和运行后台推进</small></button>
+      <button class="directory-card" data-view="memory"><span>02</span><strong>实体与事实账本</strong><small>检查人物、关系、硬设定和时间线，不依赖散文总结</small></button>
+      <button class="directory-card" data-view="worldbook"><span>03</span><strong>世界书接入</strong><small>导入 SillyTavern World Info，主动召回相关条目</small></button>
+      <button class="directory-card" data-view="audit"><span>04</span><strong>注入与一致性审计</strong><small>预览三档注入，检查生成内容是否违反账本</small></button>
+      <button class="directory-card" data-view="settings"><span>05</span><strong>连接与档位</strong><small>配置 MAE 服务地址、记忆强度和后台 tick 预算</small></button>
+      <button class="directory-card" data-view="advanced"><span>06</span><strong>高级世界机制</strong><small>分槽模型、六类生理、向量召回、死亡继任和番外队列</small></button>
+    </nav>
+    <section class="mae-view active" data-view-panel="dashboard">
+      <div class="mae-section-head"><div><p class="mae-kicker">CURRENT SESSION</p><h2>会话控制台</h2></div><div id="sessionState" class="state-pill">加载中</div></div>
+      <div class="mae-grid two">
+        <article class="mae-panel"><h3>当前回合</h3><div class="form-grid two"><label>会话 ID<input id="chatId" value="default" autocomplete="off"></label><label>回合序号<input id="turnSeq" type="number" min="0" value="1"></label></div><label>聊天内容<textarea id="turnText" rows="8" placeholder="粘贴用户或 AI 的一回合文本。AI 生成后由 SillyTavern 扩展自动发送到这里。"></textarea><details class="advanced-input"><summary>补充结构化抽取（可选）</summary><label>实体 JSON<textarea id="entitiesJson" rows="4" placeholder='[{"name":"阿福","type":"npc","current_state":"在驿站"}]'></textarea></label><label>事实 JSON<textarea id="factsJson" rows="4" placeholder='[{"category":"world_rule","content":"法术需要消耗寿命","importance":0.9}]'></textarea></label></details><div class="mae-actions"><button id="processTurnBtn" class="button primary">记录当前回合</button><button id="refreshBtn" class="button secondary">刷新状态</button></div><p id="turnFeedback" class="feedback muted">记录后会更新实体、事实和时间线。</p></article>
+        <article class="mae-panel"><h3>世界运行</h3><div class="metric-grid"><div><strong id="entityCount">0</strong><span>实体</span></div><div><strong id="factCount">0</strong><span>事实</span></div><div><strong id="timelineCount">0</strong><span>时间线</span></div><div><strong id="auditCount">0</strong><span>审计记录</span></div></div><div class="mae-divider"></div><p class="muted">后台 tick 会为符合条件的 NPC 推进视野外事件。没有模型配置时只会给出明确的“未执行”反馈，不会伪造剧情。</p><button id="runTickBtn" class="button secondary">运行一次后台 tick</button><p id="tickFeedback" class="feedback muted"></p></article>
       </div>
-      <div class="screen-grid two">
-        <section class="panel">
-          <div class="panel-title">
-            <h3>API 配置</h3>
-            <span id="apiState" class="state-pill">未测试</span>
-          </div>
-          <label>
-            Base URL
-            <input id="baseUrl" type="url" placeholder="http://localhost:11434/v1">
-          </label>
-          <label>
-            API Key
-            <input id="apiKey" type="password" placeholder="仅本次页面使用，不写入仓库">
-          </label>
-          <label>
-            Model
-            <input id="model" type="text" placeholder="gpt-4o-mini / local-model">
-          </label>
-          <div class="split-fields">
-            <label>
-              Temperature
-              <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.7">
-            </label>
-            <label>
-              Max Tokens
-              <input id="maxTokens" type="number" min="256" max="12000" step="256" value="3200">
-            </label>
-          </div>
-          <button id="testConnectionBtn" class="wide" type="button">测试连接</button>
-          <div id="apiFeedback" class="feedback muted">会测试 /models；不支持时用轻量 chat 请求。</div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title">
-            <h3>提示词预设</h3>
-            <span id="presetState" class="state-pill">未导入</span>
-          </div>
-          <label class="file-drop">
-            <input id="presetFile" type="file" accept="application/json,.json">
-            <span>导入 JSON 预设</span>
-          </label>
-          <div id="presetFeedback" class="preset-feedback muted">自动识别 OpenAI / Instruct / Context / System Prompt，并显示关键字段数量。</div>
-        </section>
-      </div>
-
-      <section class="panel narrow-panel">
-        <div class="panel-title">
-          <h3>生成设置</h3>
-        </div>
-        <label class="checkline">
-          <input id="planMode" type="checkbox" checked>
-          <span>Plan 模式：先大纲后成卡</span>
-        </label>
-        <label class="checkline">
-          <input id="embedRegex" type="checkbox" checked>
-          <span>把正则同步嵌入角色卡</span>
-        </label>
-        <label>
-          预览主题
-          <select id="themeSelect">
-            <option value="dark">暗色</option>
-            <option value="light">浅色</option>
-            <option value="contrast">高对比</option>
-          </select>
-        </label>
-      </section>
+      <article class="mae-panel"><div class="mae-section-head compact"><h3>最近世界动态</h3><button class="text-button" data-view="memory">查看完整账本</button></div><div id="timelinePreview" class="timeline-list"></div></article>
     </section>
-
-    <section class="feature-screen" data-screen="ai" hidden>
-      <div class="screen-title">
-        <button type="button" data-screen-target="home">返回目录</button>
-        <div>
-          <h2>AI 世界书生成</h2>
-          <p>AI 是写卡主力。先让 AI 生成大纲，再用已确认的大纲生成完整世界书。</p>
-        </div>
-      </div>
-      <section class="panel ai-panel">
-        <div class="panel-title">
-          <h3>AI 世界书工作流</h3>
-          <span id="workflowState" class="state-pill">待输入</span>
-        </div>
-        <label>
-          生成需求
-          <textarea id="brief" rows="10" placeholder="写清世界观、类型、势力、地点、剧情变量、触发关键词、希望 AI 记住的规则。"></textarea>
-        </label>
-        <div class="button-row">
-          <button id="generatePlanBtn" type="button">生成计划</button>
-          <button id="generateWorldbookBtn" class="primary" type="button">根据计划生成世界书卡</button>
-        </div>
-        <div id="workflowFeedback" class="feedback muted">Plan 模式会先生成结构大纲，确认后再扩写条目。</div>
-      </section>
-    </section>
-
-    <section class="feature-screen" data-screen="import" hidden>
-      <div class="screen-title">
-        <button type="button" data-screen-target="home">返回目录</button>
-        <div>
-          <h2>外部世界书导入与整理</h2>
-          <p>导入外部世界书后，可让 AI 进行总结精简、补充、修改，也可以手动编辑。</p>
-        </div>
-      </div>
-      <section class="panel">
-        <div class="panel-title">
-          <h3>导入与 AI 整理</h3>
-          <span id="importState" class="state-pill">未导入</span>
-        </div>
-        <label class="file-drop">
-          <input id="worldbookFile" type="file" accept="application/json,.json">
-          <span>导入外部世界书 JSON</span>
-        </label>
-        <div id="importFeedback" class="feedback muted">支持 SillyTavern World Info JSON、角色卡内嵌 character_book、以及本工具导出的世界书包。</div>
-        <label>
-          AI 修改要求
-          <textarea id="worldbookRefineInstruction" rows="5" placeholder="例如：压缩重复设定，保留关键词；新增势力关系条目；把过长正文缩短到原来的一半。"></textarea>
-        </label>
-        <div class="button-row">
-          <button id="refineWorldbookBtn" type="button">AI 总结精简当前世界书</button>
-          <button id="modifyWorldbookBtn" type="button">AI 按要求修改/补充</button>
-        </div>
-        <div id="aiEditFeedback" class="feedback muted">导入或生成世界书后，可用 AI 整理；也可以在结构化细节编辑里手动新增、修改、删除条目。</div>
-      </section>
-    </section>
-
-    <section class="feature-screen" data-screen="plan" hidden>
-      <div class="screen-title">
-        <button type="button" data-screen-target="home">返回目录</button>
-        <div>
-          <h2>Plan 大纲删改</h2>
-          <p>这里是 AI 成卡前的人类审稿区。可以删除不需要的条目，也可以改标题、分组、关键词和用途。</p>
-        </div>
-      </div>
-      <section class="panel">
-        <div class="panel-title">
-          <h3>Plan 大纲</h3>
-          <span id="planState" class="state-pill">无大纲</span>
-        </div>
-        <textarea id="planJson" rows="10" spellcheck="false" placeholder="AI 生成的世界书结构计划会显示在这里，也可以手动微调 JSON。"></textarea>
-        <div id="planOutline" class="outline-list"></div>
-      </section>
-    </section>
-
-    <section class="feature-screen" data-screen="editor" hidden>
-      <div class="screen-title">
-        <button type="button" data-screen-target="home">返回目录</button>
-        <div>
-          <h2>结构化细节编辑</h2>
-          <p>少量人工修正世界书结果。AI 写完后，人主要检查关键词、正文和触发位置。</p>
-        </div>
-      </div>
-      <section class="panel compact-editor">
-        <div class="editor-grid">
-          <label>
-            世界书名
-            <input id="worldName" type="text">
-          </label>
-          <label>
-            标签
-            <input id="worldTags" type="text" placeholder="worldbook-card, fantasy">
-          </label>
-          <label class="full">
-            简介
-            <textarea id="worldDesc" rows="3"></textarea>
-          </label>
-        </div>
-        <div class="entry-layout">
-          <div>
-            <div class="panel-title slim">
-              <h3>条目</h3>
-              <button id="addEntryBtn" type="button">添加条目</button>
-            </div>
-            <div id="entryList" class="entry-list"></div>
-          </div>
-          <div id="entryEditor" class="entry-editor muted">选择或添加条目后可编辑。</div>
-        </div>
-      </section>
-    </section>
-
-    <section class="feature-screen" data-screen="preview" hidden>
-      <div class="screen-title">
-        <button type="button" data-screen-target="home">返回目录</button>
-        <div>
-          <h2>SillyTavern 渲染反馈</h2>
-          <p>这是导入世界书角色卡后，第三方扩展在 SillyTavern UI 内渲染出的互动面板反馈。</p>
-        </div>
-      </div>
-      <section class="panel preview-panel">
-        <div class="panel-title">
-          <h3>导入后扩展视图</h3>
-          <span id="previewState" class="state-pill">实时</span>
-        </div>
-        <div id="renderPreview" class="render-preview"></div>
-      </section>
-    </section>
-
-    <section class="feature-screen" data-screen="export" hidden>
-      <div class="screen-title">
-        <button type="button" data-screen-target="home">返回目录</button>
-        <div>
-          <h2>检查、正则与导出</h2>
-          <p>最后在这里验证格式、下载文件或复制 JSON。</p>
-        </div>
-      </div>
-
-      <section class="panel">
-        <div class="panel-title">
-          <h3>检查与导出</h3>
-        </div>
-        <div class="action-grid" aria-label="导出与检查">
-          <div class="action-item">
-            <button id="validateBtn" type="button">检查能否导入</button>
-            <small>检查格式是否符合 SillyTavern。</small>
-          </div>
-          <div class="action-item">
-            <button id="exportCardBtn" type="button">下载世界书角色卡</button>
-            <small>下载可导入角色卡，内含世界书。</small>
-          </div>
-          <div class="action-item">
-            <button id="exportWorldBtn" type="button">下载世界书JSON</button>
-            <small>下载独立 World Info 文件。</small>
-          </div>
-          <div class="action-item">
-            <button id="exportRegexBtn" type="button">下载正则</button>
-            <small>下载 Regex 扩展正则文件。</small>
-          </div>
-          <div class="action-item">
-            <button id="copyCardBtn" type="button">复制卡片JSON</button>
-            <small>复制完整角色卡文本。</small>
-          </div>
-          <div class="action-item">
-            <button id="copyRegexPreviewBtn" type="button">复制正则预览</button>
-            <small>复制正则替换后的测试文本。</small>
-          </div>
-        </div>
-      </section>
-
-      <div class="screen-grid two">
-        <section class="panel">
-          <div class="panel-title">
-            <h3>正则与测试文本</h3>
-          </div>
-          <label>
-            Regex JSON
-            <textarea id="regexScriptsJson" rows="8" spellcheck="false" placeholder="[]"></textarea>
-          </label>
-          <div class="button-row">
-            <button id="applyRegexBtn" type="button">应用正则JSON</button>
-          </div>
-          <label>
-            正则测试文本
-            <textarea id="regexTestText" rows="5" placeholder="输入聊天文本，SillyTavern 渲染反馈会根据关键词显示最近触发；下方显示正则替换结果。"></textarea>
-          </label>
-          <div class="regex-result">
-            <span>替换后</span>
-            <pre id="regexPreviewOutput"></pre>
-          </div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title">
-            <h3>检查反馈</h3>
-          </div>
-          <div id="validationOutput" class="validation-output muted">尚未检查。</div>
-        </section>
-      </div>
-    </section>
+    <section class="mae-view" data-view-panel="memory" hidden><div class="mae-section-head"><div><p class="mae-kicker">STRUCTURED MEMORY</p><h2>实体与事实账本</h2></div><span class="state-pill">NPC / 物品</span></div><div class="mae-grid two"><article class="mae-panel"><h3>实体注册表</h3><div id="entitiesTable" class="table-wrap"></div></article><article class="mae-panel"><h3>事实账本</h3><div id="factsTable" class="table-wrap"></div></article></div><article class="mae-panel"><div class="mae-section-head compact"><div><h3>NPC、物品与独立实体</h3><p class="muted">个性、行为、当前状态、目标和物品都从账本直接编辑并保存。</p></div><span id="entityEditState" class="state-pill">可编辑</span></div><div id="entityEditorList" class="mae-entity-editor"></div><p id="entityEditFeedback" class="feedback muted"></p></article><article class="mae-panel"><h3>时间线</h3><div id="timelineTable" class="timeline-list"></div></article></section>
+    <section class="mae-view" data-view-panel="worldbook" hidden><div class="mae-section-head"><div><p class="mae-kicker">WORLD BOOK RECALL</p><h2>世界书接入</h2></div><span id="worldbookState" class="state-pill">未同步</span></div><div class="mae-grid two"><article class="mae-panel"><h3>导入 SillyTavern 世界书</h3><p class="muted">支持 World Info JSON、角色卡内嵌 character_book 和本工具导出的世界书包。导入后会保存为当前会话的召回快照。</p><input id="worldbookFile" type="file" accept="application/json,.json"><p id="worldbookFeedback" class="feedback muted"></p></article><article class="mae-panel"><h3>当前召回快照</h3><div id="worldbookPreview" class="worldbook-list"><p class="muted">还没有同步世界书。</p></div></article></div></section>
+    <section class="mae-view" data-view-panel="audit" hidden><div class="mae-section-head"><div><p class="mae-kicker">ATTENTION &amp; AUDIT</p><h2>注入与一致性审计</h2></div><span id="injectionState" class="state-pill">未生成</span></div><article class="mae-panel"><div class="form-grid two"><label>注入档位<select id="tier"><option value="light">轻：800 token，关闭 tick</option><option value="medium" selected>中：1500 token，默认</option><option value="heavy">重：3000 token，高密度</option></select></label><label>上下文关键词<textarea id="contextText" rows="3" placeholder="用于实体排序和世界书召回，例如：城南客栈 林逸尘"></textarea></label></div><div class="mae-actions"><button id="buildInjectionBtn" class="button primary">生成注入预览</button></div><div id="injectionOutput" class="injection-output"><p class="muted">注入会分成 top / mid / bottom 三个落点，关键事实不会只放在中段。</p></div></article><article class="mae-panel"><h3>生成文本审计</h3><textarea id="auditText" rows="6" placeholder="粘贴一段待检查的 AI 输出"></textarea><div class="mae-actions"><button id="auditBtn" class="button secondary">检查是否违反事实</button></div><div id="auditOutput" class="feedback muted"></div></article><article class="mae-panel"><h3>历史审计</h3><div id="auditsTable" class="table-wrap"></div></article></section>
+    <section class="mae-view" data-view-panel="settings" hidden><div class="mae-section-head"><div><p class="mae-kicker">LOCAL RUNTIME</p><h2>连接与档位</h2></div><span class="state-pill">本地数据</span></div><article class="mae-panel narrow"><label>MAE 服务地址<input id="endpoint" value="http://127.0.0.1:8787/api/mae"></label><p class="muted">这是本地服务地址，不是模型 API 地址。模型密钥只由本地服务读取，不会发送到浏览器或 GitHub。</p><div class="form-grid two"><label>后台 tick 间隔（轮）<input id="tickEvery" type="number" min="0" value="8"></label><label>每次最多 NPC 数<input id="maxTickNpcs" type="number" min="1" max="20" value="5"></label></div><div class="mae-actions"><button id="saveSettingsBtn" class="button primary">保存会话档位</button><button id="testEndpointBtn" class="button secondary">测试本地服务</button></div><p id="settingsFeedback" class="feedback muted"></p></article><article class="mae-panel narrow"><h3>与原有世界书写卡器的关系</h3><p class="muted">原有 TavernCard V2、World Info、Regex 导出接口仍保留，作为迁移和导入工具；MAE 的主数据是真实的结构化世界状态，不把卡片 JSON 当作唯一记忆来源。</p><a class="button secondary inline" href="/api/health">查看兼容接口状态</a></article></section>
+    <section class="mae-view" data-view-panel="advanced" hidden><div class="mae-section-head"><div><p class="mae-kicker">ADVANCED WORLD ENGINE</p><h2>高级世界机制</h2></div><span id="advancedState" class="state-pill">可配置</span></div><article class="mae-panel"><h3>分槽模型路由</h3><p class="muted">main、extract、audit_A、audit_B、tick、gaiden 可分别指定 OpenAI 兼容模型。密钥只在本地服务内保存，读取时只显示是否已配置。</p><textarea id="modelRoutesJson" rows="9" placeholder='{"defaultApi":{"baseUrl":"http://127.0.0.1:11434/v1","model":"模型名"},"slots":{"audit_A":{"followMain":false,"model":"便宜审查模型"}}}'></textarea><div class="mae-actions"><button id="loadModelRoutesBtn" class="button secondary">读取分槽配置</button><button id="saveModelRoutesBtn" class="button primary">保存分槽配置</button></div><p id="modelRoutesFeedback" class="feedback muted"></p></article><div class="mae-grid two"><article class="mae-panel"><h3>六类生理规则</h3><p class="muted">可覆盖怀孕、伤势、成瘾、衰老、节育和性病参数；只保存结构化状态，渲染时按世界时间计算。</p><textarea id="physiologyRulesJson" rows="12" placeholder='{"aging":{"naturalDeathAge":70},"injury":{"deathSeverity":4}}'></textarea><div class="mae-actions"><button id="savePhysiologyRulesBtn" class="button primary">保存规则覆盖</button></div><p id="physiologyFeedback" class="feedback muted"></p></article><article class="mae-panel"><h3>死亡与继任</h3><div class="form-grid two"><label>实体 ID<input id="deathEntityId" placeholder="从实体账本复制"></label><label>死因<input id="deathCause" value="剧情事件"></label></div><div class="mae-actions"><button id="markDeathBtn" class="button secondary">结算死亡</button></div><div class="form-grid two"><label>继任者姓名<input id="successorName"></label><label>与死者关系<input id="successorRelation" value="故人之后"></label></div><label>继任者身份<input id="successorIdentity" value="携带遗产的新居民"></label><div class="mae-actions"><button id="createSuccessorBtn" class="button primary">创建继任者</button></div><p id="successionFeedback" class="feedback muted"></p><p id="advancedPlayer" class="muted">当前玩家：未登记</p></article></div><article class="mae-panel"><div class="mae-section-head compact"><h3>番外队列</h3><div class="mae-actions"><button id="refreshGaidenBtn" class="button secondary">刷新队列</button><button id="processGaidenBtn" class="button primary">处理一章</button></div></div><div id="advancedGaiden" class="worldbook-list"><p class="muted">还没有番外。</p></div><p id="gaidenFeedback" class="feedback muted"></p></article></section>
   </main>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.js"></script>
+  <div id="toast" class="mae-toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/mae-app.js"></script>
 </body>
 </html>

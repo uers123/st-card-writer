@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Standalone SillyTavern worldbook card writer and interactive viewer extension.",
+  "description": "Local Memory & Autonomy Engine for SillyTavern with worldbook migration tools.",
   "scripts": {
     "start": "node server.js",
     "check": "node scripts/check-js.mjs",

@@ -4,6 +4,7 @@ import {
   extension_prompt_roles,
   extension_prompt_types,
   generateQuietPrompt,
+  saveCharacterDebounced,
   saveSettingsDebounced,
   setExtensionPrompt,
 } from '../../../../script.js';
@@ -34,6 +35,7 @@ const state = {
   summarizing: false,
   lastStatus: 'Idle',
   chatMemory: new Map(),
+  lastEditStatus: '',
 };
 
 globalThis[INTERCEPTOR_NAME] = generationInterceptor;
@@ -123,6 +125,10 @@ function createPanel() {
   `;
   panel.addEventListener('click', onPanelClick);
   panel.addEventListener('input', onPanelInput);
+  panel.addEventListener('change', onPanelInput);
+  panel.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closePanel();
+  });
   document.body.appendChild(panel);
 }
 
@@ -138,6 +144,10 @@ function closePanel() {
 }
 
 async function onPanelClick(event) {
+  if (event.target === event.currentTarget) {
+    closePanel();
+    return;
+  }
   if (event.target.closest('.stcwv-close')) {
     closePanel();
     return;
@@ -147,6 +157,13 @@ async function onPanelClick(event) {
   if (groupButton) {
     state.activeGroup = groupButton.dataset.stcwvGroup || 'all';
     renderPanel();
+    return;
+  }
+
+  const sectionButton = event.target.closest('[data-stcwv-section]');
+  if (sectionButton) {
+    const section = document.getElementById(sectionButton.dataset.stcwvSection);
+    section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
 
@@ -173,6 +190,12 @@ function onPanelInput(event) {
   }
 
   const settingKey = event.target.dataset.stcwvSetting;
+  const entryField = event.target.dataset.stcwvEntryField;
+  const entryCard = event.target.closest('[data-stcwv-entry-id]');
+  if (entryField && entryCard && (event.type === 'change' || event.target.type === 'checkbox')) {
+    updateCardEntry(entryCard.dataset.stcwvEntryId, entryField, event.target);
+    return;
+  }
   if (!settingKey) return;
 
   const settings = ensureSettings();
@@ -401,8 +424,8 @@ function renderPanel() {
   const sources = summarizeSources(data.entries);
 
   body.innerHTML = `
-    <section class="stcwv-hero">
-      <div class="stcwv-cover">${renderImageOrText(data.meta.render?.coverImageUrl, initials(data.name))}</div>
+    <section class="stcwv-hero" id="stcwv-cover">
+      <button type="button" class="stcwv-cover" data-stcwv-section="stcwv-catalog" title="打开功能目录">${renderImageOrText(data.meta.render?.coverImageUrl, initials(data.name))}</button>
       <div>
         <h3>${escapeHtml(data.name)}</h3>
         <p>${escapeHtml(data.description || 'No description')}</p>
@@ -416,11 +439,18 @@ function renderPanel() {
       </div>
     </section>
 
+    <nav id="stcwv-catalog" class="stcwv-catalog" aria-label="Worldbook card functions">
+      <button type="button" data-stcwv-section="stcwv-entities">NPC / Items</button>
+      <button type="button" data-stcwv-section="stcwv-recent">Recent story state</button>
+      <button type="button" data-stcwv-section="stcwv-entries">All worldbook entries</button>
+      <button type="button" data-stcwv-section="stcwv-settings">Viewer settings</button>
+    </nav>
+
     ${renderSettings(settings)}
     ${renderMemoryPanel(cache, triggerState, sources)}
     ${renderToolbar(groups)}
 
-    <section class="stcwv-recent">
+    <section id="stcwv-recent" class="stcwv-recent">
       <h4>Recent triggers</h4>
       ${triggerState.recent.length ? triggerState.recent.map((item) => `
         <div class="stcwv-recent-item">
@@ -430,7 +460,7 @@ function renderPanel() {
       `).join('') : '<p>No recent keyword trigger yet.</p>'}
     </section>
 
-    <section class="stcwv-table-wrap">
+    <section id="stcwv-entries" class="stcwv-table-wrap">
       <table class="stcwv-table">
         <thead>
           <tr>
@@ -447,7 +477,7 @@ function renderPanel() {
       </table>
     </section>
 
-    <section class="stcwv-card-grid">
+    <section id="stcwv-entities" class="stcwv-card-grid">
       ${visibleEntries.length ? visibleEntries.map((entry) => renderEntryCard(entry, triggerState)).join('') : '<div class="stcwv-empty">No entry matches the current filter.</div>'}
     </section>
   `;
@@ -455,7 +485,7 @@ function renderPanel() {
 
 function renderSettings(settings) {
   return `
-    <section class="stcwv-settings">
+    <section id="stcwv-settings" class="stcwv-settings">
       <div class="stcwv-section-head">
         <h4>Deep-role engine</h4>
         <span>${settings.enabled ? 'Injection enabled' : 'Injection disabled'}</span>
@@ -563,10 +593,19 @@ function renderEntryCard(entry, triggerState) {
     <article class="stcwv-card ${entry.enabled ? '' : 'disabled'} ${stat.recent ? 'recent' : ''}" style="--entry-color:${escapeAttr(entry.color || '#24b47e')}">
       <div class="stcwv-thumb">${renderImageOrText(entry.imageUrl, entry.placeholder || initials(entry.title))}</div>
       <div class="stcwv-card-body">
-        <h4>${escapeHtml(entry.title)}</h4>
+        <div class="stcwv-card-head"><div><h4>${escapeHtml(entry.title)}</h4><small>${escapeHtml(entryCategory(entry))}</small></div><span>${entry.enabled ? 'enabled' : 'disabled'}</span></div>
         <p>${escapeHtml(entry.content || 'No content')}</p>
         <div class="stcwv-key-row">${entry.keys.map((key) => `<span class="stcwv-key">${escapeHtml(key)}</span>`).join('')}</div>
         <small>${escapeHtml(entry.group)} / ${entry.enabled ? 'enabled' : 'disabled'} / hits ${stat.count}${entry.source?.fileName ? ` / ${escapeHtml(entry.source.fileName)}` : ''}</small>
+        <details class="stcwv-entry-editor">
+          <summary>Edit this NPC, item, or lore entry</summary>
+          <label>Title<input data-stcwv-entry-field="title" value="${escapeAttr(entry.title)}"></label>
+          <label>Group<input data-stcwv-entry-field="group" value="${escapeAttr(entry.group)}"></label>
+          <label>Keywords<input data-stcwv-entry-field="keys" value="${escapeAttr(entry.keys.join(', '))}"></label>
+          <label>Content<textarea data-stcwv-entry-field="content" rows="5">${escapeHtml(entry.content)}</textarea></label>
+          <label class="stcwv-checkline"><input type="checkbox" data-stcwv-entry-field="enabled" ${entry.enabled ? 'checked' : ''}> Enabled</label>
+          <small>Changes are saved to the current character card.</small>
+        </details>
       </div>
     </article>
   `;
@@ -615,7 +654,48 @@ function normalizeEntry(entry, index) {
     placeholder: meta.placeholder || visual.placeholder || '',
     color: meta.color || visual.color || '#24b47e',
     source: meta.source || {},
+    raw: entry,
   };
+}
+
+function entryCategory(entry) {
+  const value = `${entry.group} ${entry.title}`.toLowerCase();
+  if (/npc|character|人物|角色|faction|势力/u.test(value)) return 'NPC / Character';
+  if (/item|object|物品|道具|装备/u.test(value)) return 'Item / Object';
+  if (/place|location|地点|区域|场所/u.test(value)) return 'Place / Location';
+  return 'World rule / lore';
+}
+
+function updateCardEntry(entryId, field, input) {
+  const context = getContext();
+  const character = context.characters?.[context.characterId];
+  const data = character?.data || character;
+  const entries = data?.character_book?.entries;
+  if (!Array.isArray(entries)) return;
+  const entry = entries.find((item, index) => String(item.id ?? index) === String(entryId));
+  if (!entry) return;
+
+  const value = field === 'enabled' ? Boolean(input.checked) : input.value;
+  entry.extensions = entry.extensions && typeof entry.extensions === 'object' ? entry.extensions : {};
+  entry.extensions.st_card_writer = entry.extensions.st_card_writer && typeof entry.extensions.st_card_writer === 'object'
+    ? entry.extensions.st_card_writer
+    : {};
+  if (field === 'title') entry.comment = String(value).trim();
+  if (field === 'group') {
+    entry.group = String(value).trim() || 'Core';
+    entry.extensions.group = entry.group;
+    entry.extensions.st_card_writer.group = entry.group;
+  }
+  if (field === 'keys') entry.keys = String(value).split(/[,，、\n]/u).map((item) => item.trim()).filter(Boolean);
+  if (field === 'content') entry.content = String(value);
+  if (field === 'enabled') {
+    entry.enabled = Boolean(value);
+    entry.disable = !entry.enabled;
+  }
+  saveCharacterDebounced();
+  state.lastEditStatus = `Saved ${entry.comment || 'entry'}`;
+  refreshButtonState();
+  if (state.open) renderPanel();
 }
 
 function computeTriggerState(entries, messages = getCurrentChatMessages()) {
