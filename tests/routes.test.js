@@ -10,6 +10,9 @@ test('api router exposes health and worldbook export endpoints', async (t) => {
   const healthResponse = await fetch(`${baseUrl}/api/health`);
   assert.equal(healthResponse.ok, true);
   assert.equal((await healthResponse.json()).name, 'st-card-writer');
+  const compatibilityResponse = await fetch(`${baseUrl}/api/compatibility`);
+  assert.equal(compatibilityResponse.ok, true);
+  assert.equal((await compatibilityResponse.json()).apiVersion, '1.0.0');
 
   const localConfigResponse = await fetch(`${baseUrl}/api/local-config`);
   const localConfig = await localConfigResponse.json();
@@ -115,4 +118,6 @@ function startServer() {
     });
   });
 }
+
+
 

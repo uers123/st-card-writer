@@ -19,8 +19,19 @@ import {
   validateWorldbook,
 } from './worldbook.js';
 
+const ST_CARD_WRITER_COMPATIBILITY = Object.freeze({
+  name: 'st-card-writer',
+  apiVersion: '1.0.0',
+  serverVersion: '0.1.0',
+  minimumSillyTavernVersion: '1.12.13',
+});
+
 export function createApiRouter() {
   const router = express.Router();
+
+  router.get('/compatibility', (_request, response) => {
+    response.json(ST_CARD_WRITER_COMPATIBILITY);
+  });
 
   router.get('/health', (_request, response) => {
     response.json({ ok: true, name: 'st-card-writer' });
@@ -209,4 +220,8 @@ function slugify(value) {
     .replace(/^-|-$/g, '')
     .toLowerCase() || 'character';
 }
+
+
+
+
 
