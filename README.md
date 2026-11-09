@@ -8,6 +8,7 @@
 
 ```powershell
 cd .\st-card-writer
+cd <本项目目录>\\st-card-writer
 npm install
 npm start
 ```
@@ -83,6 +84,32 @@ MAE 接口前缀为 `/api/mae`：
 原有世界书卡生成、TavernCard V2、World Info 和 Regex 路由仍保留在 `/api`，只作为迁移工具，不再是默认首页的数据模型。
 
 ## 验证
+The extension source is in:
+
+```text
+sillytavern-extension\st-card-writer-viewer
+```
+
+It is also installed locally at:
+
+```text
+<你的 SillyTavern 安装目录>\public\scripts\extensions\third-party\st-card-writer-viewer
+```
+
+After restarting SillyTavern, open the extensions wand menu or character management menu and select the worldbook card viewer. The extension only activates for cards with `data.extensions.st_card_writer.kind = "worldbook-card"`.
+
+## Project Structure
+
+- `server.js`: Express entrypoint and static file hosting.
+- `src/routes.js`: API route registration and export response assembly.
+- `src/local-config.js`: local `.env.local` / environment default API configuration.
+- `src/worldbook.js`: worldbook normalization, validation, embedded card export, and standalone World Info export.
+- `src/openai.js`: OpenAI-compatible connection test, plan generation, and worldbook generation.
+- `public/app.js`: browser workflow orchestration.
+- `public/modules/`: browser-side API, state, rendering, and UI utility modules.
+- `sillytavern-extension/st-card-writer-viewer/`: third-party SillyTavern viewer extension source.
+
+## Test
 
 ```powershell
 npm test
@@ -90,3 +117,4 @@ npm run check
 ```
 
 测试覆盖旧世界书格式兼容性，以及 MAE 的存储、事实冲突、注入预算、世界书召回、审计、tick、六类生理、模型路由、番外队列、死亡继任和 HTTP seam。
+
