@@ -7,7 +7,7 @@
   "css": "style.css",
   "generate_interceptor": "stCardWriterDeepRoleInterceptor",
   "author": "uers123",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "homePage": "https://github.com/uers123/st-card-writer",
   "minimum_client_version": "1.12.13"
 }
