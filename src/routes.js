@@ -209,3 +209,4 @@ function slugify(value) {
     .replace(/^-|-$/g, '')
     .toLowerCase() || 'character';
 }
+
